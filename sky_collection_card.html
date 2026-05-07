@@ -684,11 +684,9 @@ function init() {
           else navigateTo(idx);
           return;
         }
-      } else if (!didTouchDrag && dt < 250) {
+      } else {
         const ghostEl = e.target.closest(".ghost-slot");
         if (ghostEl && revealDone && current === SPECIAL_IDX) {
-          touchHandled = true;
-          setTimeout(() => { touchHandled = false; }, 400);
           carousel.style.transition = "";
           doFlip(SPECIAL_IDX);
           return;
