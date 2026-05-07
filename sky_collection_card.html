@@ -299,7 +299,7 @@ function buildCard(p, idx) {
     </div>`;
 
   slot.querySelector(".card-inner").addEventListener("click", () => {
-    if (didDrag || didTouchDrag) return;
+    if (didDrag || didTouchDrag || touchHandled) return;
     if (!slot.classList.contains("center")) {
       navigateTo(idx);
     } else {
@@ -335,7 +335,7 @@ function adjustTranslate() {
 }
 
 const cardDeg = {};
-let didDrag = false, didTouchDrag = false;
+let didDrag = false, didTouchDrag = false, touchHandled = false;
 let liveOffset = 0, rafId = null;
 
 function doFlip(idx) {
@@ -468,12 +468,30 @@ function init() {
     carousel.style.transition = "none";
   }, { passive: true });
   carousel.addEventListener("touchmove", e => {
-    if (Math.abs(e.touches[0].clientX - tx) > 5) didTouchDrag = true;
+    if (Math.abs(e.touches[0].clientX - tx) > 8) didTouchDrag = true;
     liveOffset = tbaseOff + e.touches[0].clientX - tx;
     carousel.style.transform = `translateX(${liveOffset}px)`;
   }, { passive: true });
   carousel.addEventListener("touchend", e => {
-    startInertia((e.changedTouches[0].clientX - tx) / Math.max(1, Date.now() - ttime));
+    const endX = e.changedTouches[0].clientX;
+    const dt = Date.now() - ttime;
+    // タップ判定：移動なし & 短時間
+    if (!didTouchDrag && dt < 250) {
+      touchHandled = true;
+      setTimeout(() => { touchHandled = false; }, 400);
+      const cardSlot = e.target.closest(".card-slot");
+      if (cardSlot) {
+        const slots = [...carousel.querySelectorAll(".card-slot")];
+        const idx = slots.indexOf(cardSlot);
+        if (idx >= 0) {
+          carousel.style.transition = "";
+          if (cardSlot.classList.contains("center")) doFlip(idx);
+          else navigateTo(idx);
+          return;
+        }
+      }
+    }
+    startInertia((endX - tx) / Math.max(1, dt));
   }, { passive: true });
 
   window.addEventListener("resize", adjustTranslate);
