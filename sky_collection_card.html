@@ -5,8 +5,8 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
-    --card-w: clamp(110px, 16vw, 200px);
-    --card-h: calc(var(--card-w) * 1.406);
+    --card-w: clamp(240px, 78vw, 340px);
+    --card-h: min(calc(var(--card-w) * 1.406), 56vh);
   }
 
   html, body {
@@ -62,7 +62,7 @@
   .carousel-wrap {
     position: relative;
     z-index: 5;
-    padding: 70px 0 24px;
+    padding: 28px 0 16px;
     overflow: hidden;
     flex: 1;
     display: flex;
@@ -87,10 +87,10 @@
     perspective: 900px;
   }
 
-  .card-slot.center { transform: scale(1.65); opacity: 1; z-index: 10; }
-  .card-slot.side-1 { transform: scale(0.82); opacity: 0.55; }
-  .card-slot.side-2 { transform: scale(0.66); opacity: 0.3; }
-  .card-slot.side-3 { transform: scale(0.54); opacity: 0.12; }
+  .card-slot.center { transform: scale(1.0); opacity: 1; z-index: 10; }
+  .card-slot.side-1 { transform: scale(0.88); opacity: 0.7; }
+  .card-slot.side-2 { transform: scale(0.75); opacity: 0.3; }
+  .card-slot.side-3 { transform: scale(0.60); opacity: 0.08; }
 
   .card-inner {
     width: var(--card-w);
@@ -331,10 +331,28 @@ function getClass(i) {
 function adjustTranslate() {
   const W = carousel.parentElement.offsetWidth;
   const cardEl = carousel.querySelector(".card-inner");
-  const cardW = cardEl ? cardEl.offsetWidth : 128;
-  const cw = cardW + 16;
-  const offset = W / 2 - current * cw - cw / 2;
+  const cardW = cardEl ? cardEl.offsetWidth : 240;
+  const gap = 16;
+  const cw = cardW + gap;
+  const offset = W / 2 - current * cw - cardW / 2;
   carousel.style.transform = `translateX(${offset}px)`;
+}
+
+function spinTo(targetIdx) {
+  const target = Math.max(0, Math.min(players.length - 1, targetIdx));
+  if (target === current) return;
+  const dir = target > current ? 1 : -1;
+  const steps = Math.abs(target - current);
+  let step = 0;
+  function tick() {
+    if (step >= steps) return;
+    current += dir;
+    render();
+    step++;
+    const t = step / steps;
+    setTimeout(tick, 50 + t * t * 320);
+  }
+  tick();
 }
 
 function render() {
@@ -357,27 +375,29 @@ function init() {
   current = 0;
   render();
 
-  // マウスドラッグ
-  let sx = 0, drag = false;
-  carousel.addEventListener("mousedown", e => { sx = e.clientX; drag = true; });
-  window.addEventListener("mousemove", e => {
+  // マウスドラッグ（velocity で spinTo）
+  let sx = 0, stime = 0, drag = false;
+  carousel.addEventListener("mousedown", e => { sx = e.clientX; stime = Date.now(); drag = true; });
+  window.addEventListener("mouseup", e => {
     if (!drag) return;
-    if (Math.abs(e.clientX - sx) > 36) {
-      if (e.clientX < sx && current < players.length - 1) navigateTo(current + 1);
-      if (e.clientX > sx && current > 0) navigateTo(current - 1);
-      drag = false;
+    drag = false;
+    const dx = sx - e.clientX;
+    const vel = Math.abs(dx) / Math.max(1, Date.now() - stime);
+    if (Math.abs(dx) > 30) {
+      const cards = Math.max(1, Math.min(6, Math.round(vel * 5)));
+      spinTo(dx > 0 ? current + cards : current - cards);
     }
   });
-  window.addEventListener("mouseup", () => drag = false);
 
-  // タッチスワイプ
-  let tx = 0;
-  carousel.addEventListener("touchstart", e => { tx = e.touches[0].clientX; }, { passive: true });
+  // タッチスワイプ（velocity で spinTo）
+  let tx = 0, ttime = 0;
+  carousel.addEventListener("touchstart", e => { tx = e.touches[0].clientX; ttime = Date.now(); }, { passive: true });
   carousel.addEventListener("touchend", e => {
-    const diff = tx - e.changedTouches[0].clientX;
-    if (Math.abs(diff) > 36) {
-      if (diff > 0 && current < players.length - 1) navigateTo(current + 1);
-      if (diff < 0 && current > 0) navigateTo(current - 1);
+    const dx = tx - e.changedTouches[0].clientX;
+    const vel = Math.abs(dx) / Math.max(1, Date.now() - ttime);
+    if (Math.abs(dx) > 30) {
+      const cards = Math.max(1, Math.min(6, Math.round(vel * 5)));
+      spinTo(dx > 0 ? current + cards : current - cards);
     }
   }, { passive: true });
 
