@@ -279,6 +279,19 @@
   </nav>
 
   <div class="carousel-wrap">
+    <div id="special-card-overlay"
+         style="display:none; position:absolute; top:0; left:0; right:0; bottom:0;
+                z-index:20; pointer-events:none; perspective:900px;
+                align-items:center; justify-content:center;">
+      <div id="special-card-drop"
+           style="width:var(--card-w); height:var(--card-h); border-radius:11px;
+                  overflow:hidden; border:0.5px solid rgba(255,255,255,0.12);
+                  transform:translateY(-120vh) rotateY(0deg);">
+        <img src="images/image999.jpg"
+             style="width:100%;height:100%;object-fit:cover;display:block;"
+             draggable="false">
+      </div>
+    </div>
     <div class="carousel-track" id="carousel"></div>
   </div>
 
