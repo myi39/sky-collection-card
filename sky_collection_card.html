@@ -97,12 +97,9 @@
     height: var(--card-h);
     position: relative;
     transform-style: preserve-3d;
-    transition: transform 0.7s cubic-bezier(0.4,0,0.2,1);
     border-radius: 11px;
     cursor: pointer;
   }
-
-  .card-inner.flipped { transform: rotateY(180deg); }
 
   .card-face {
     position: absolute;
@@ -292,7 +289,7 @@ function buildCard(p, idx) {
   slot.innerHTML = `
     <div class="card-inner" id="ci-${idx}">
       <div class="card-face">
-        <img src="${p.frontImg}" class="card-front-img" alt="${p.name}">
+        <img src="${p.frontImg}" class="card-front-img" alt="${p.name}" draggable="false">
       </div>
       <div class="card-face card-back" style="background:linear-gradient(160deg,#141e38 0%,#0a1020 100%)">
         <div class="back-emoji">${p.emoji}</div>
@@ -302,12 +299,11 @@ function buildCard(p, idx) {
     </div>`;
 
   slot.querySelector(".card-inner").addEventListener("click", () => {
+    if (didDrag || didTouchDrag) return;
     if (!slot.classList.contains("center")) {
       navigateTo(idx);
     } else {
-      const ci = document.getElementById(`ci-${idx}`);
-      if (flipped.has(idx)) { flipped.delete(idx); ci.classList.remove("flipped"); }
-      else { flipped.add(idx); ci.classList.add("flipped"); }
+      doFlip(idx);
     }
   });
   return slot;
@@ -338,26 +334,30 @@ function adjustTranslate() {
   carousel.style.transform = `translateX(${offset}px)`;
 }
 
-let spinId = 0;
+const cardDeg = {};
+let didDrag = false, didTouchDrag = false;
+let liveOffset = 0, rafId = null;
 
-function spinTo(targetIdx) {
-  const myId = ++spinId;
-  const target = Math.max(0, Math.min(players.length - 1, targetIdx));
-  if (target === current) { navigateTo(current); return; }
-  const dir = target > current ? 1 : -1;
-  const steps = Math.abs(target - current);
-  let step = 0;
-  carousel.style.transition = "none";
-  function tick() {
-    if (spinId !== myId) return;
-    if (step >= steps) { carousel.style.transition = ""; return; }
-    current += dir;
-    render();
-    step++;
-    const t = step / steps;
-    setTimeout(tick, 40 + t * t * 300);
+function doFlip(idx) {
+  const ci = document.getElementById(`ci-${idx}`);
+  if (!ci) return;
+  const d = cardDeg[idx] || 0;
+  const toBack = !flipped.has(idx);
+  const base = Math.floor(d / 360) * 360;
+  let target;
+  if (toBack) {
+    // 次の ≡180(mod360) の位置 + 2スピン
+    target = (base + 180 > d ? base + 180 : base + 540) + 720;
+    flipped.add(idx);
+  } else {
+    // 次の ≡0(mod360) の位置 + 2スピン
+    target = base + 360 + 720;
+    flipped.delete(idx);
   }
-  tick();
+  cardDeg[idx] = target;
+  ci.style.transition = "transform 0.85s cubic-bezier(0.16, 1, 0.3, 1)";
+  ci.style.transform = `rotateY(${target}deg)`;
+  setTimeout(() => { ci.style.transition = ""; }, 850);
 }
 
 function getBaseOffset(idx) {
@@ -375,17 +375,46 @@ function nearestCard(offset) {
   return Math.max(0, Math.min(players.length - 1, Math.round((W / 2 - cardW / 2 - offset) / cw)));
 }
 
-function onDragEnd(dx, dt) {
-  carousel.style.transition = "";
-  const vel = dx / Math.max(1, dt); // px/ms、正 = 右ドラッグ
-  const posCard = nearestCard(getBaseOffset(current) + dx);
-  const extra = Math.sign(-vel) * Math.min(3, Math.floor(Math.abs(vel) * 4));
-  const target = Math.max(0, Math.min(players.length - 1, posCard + extra));
-  if (Math.abs(target - current) <= 1) {
-    navigateTo(target);
-  } else {
-    spinTo(target);
+function cancelInertia() {
+  if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+}
+
+function updateHighlight(offset) {
+  const nearest = nearestCard(offset);
+  if (nearest !== current) {
+    current = nearest;
+    carousel.querySelectorAll(".card-slot").forEach((s, i) => {
+      s.className = "card-slot " + getClass(i);
+    });
   }
+}
+
+function startInertia(velPxPerMs) {
+  cancelInertia();
+  carousel.style.transition = "none";
+  let vel = velPxPerMs * 16; // px/ms → px/frame (60fps)
+  let offset = liveOffset;
+  const minOff = getBaseOffset(players.length - 1);
+  const maxOff = getBaseOffset(0);
+
+  function frame() {
+    vel *= 0.87; // 摩擦
+    offset += vel;
+    if (offset > maxOff) { offset = maxOff; vel = 0; }
+    if (offset < minOff) { offset = minOff; vel = 0; }
+    carousel.style.transform = `translateX(${offset}px)`;
+    liveOffset = offset;
+    updateHighlight(offset);
+    if (Math.abs(vel) < 0.5) {
+      const target = nearestCard(offset);
+      current = target;
+      carousel.style.transition = "transform 0.3s cubic-bezier(0.25, 0.1, 0.25, 1)";
+      render();
+      return;
+    }
+    rafId = requestAnimationFrame(frame);
+  }
+  rafId = requestAnimationFrame(frame);
 }
 
 function render() {
@@ -408,37 +437,43 @@ function init() {
   current = 0;
   render();
 
-  // マウスドラッグ（リアルタイム追従）
+  // マウスドラッグ（リアルタイム追従 + 慣性）
   let sx = 0, stime = 0, drag = false, baseOff = 0;
   carousel.addEventListener("mousedown", e => {
-    spinId++;
-    drag = true; sx = e.clientX; stime = Date.now();
-    baseOff = getBaseOffset(current);
+    cancelInertia();
+    drag = true; didDrag = false;
+    sx = e.clientX; stime = Date.now();
+    baseOff = liveOffset = getBaseOffset(current);
     carousel.style.transition = "none";
   });
   window.addEventListener("mousemove", e => {
     if (!drag) return;
-    carousel.style.transform = `translateX(${baseOff + e.clientX - sx}px)`;
+    if (Math.abs(e.clientX - sx) > 5) didDrag = true;
+    liveOffset = baseOff + e.clientX - sx;
+    carousel.style.transform = `translateX(${liveOffset}px)`;
   });
   window.addEventListener("mouseup", e => {
     if (!drag) return;
     drag = false;
-    onDragEnd(e.clientX - sx, Date.now() - stime);
+    startInertia((e.clientX - sx) / Math.max(1, Date.now() - stime));
   });
 
-  // タッチスワイプ（リアルタイム追従）
+  // タッチスワイプ（リアルタイム追従 + 慣性）
   let tx = 0, ttime = 0, tbaseOff = 0;
   carousel.addEventListener("touchstart", e => {
-    spinId++;
+    cancelInertia();
     tx = e.touches[0].clientX; ttime = Date.now();
-    tbaseOff = getBaseOffset(current);
+    tbaseOff = liveOffset = getBaseOffset(current);
+    didTouchDrag = false;
     carousel.style.transition = "none";
   }, { passive: true });
   carousel.addEventListener("touchmove", e => {
-    carousel.style.transform = `translateX(${tbaseOff + e.touches[0].clientX - tx}px)`;
+    if (Math.abs(e.touches[0].clientX - tx) > 5) didTouchDrag = true;
+    liveOffset = tbaseOff + e.touches[0].clientX - tx;
+    carousel.style.transform = `translateX(${liveOffset}px)`;
   }, { passive: true });
   carousel.addEventListener("touchend", e => {
-    onDragEnd(e.changedTouches[0].clientX - tx, Date.now() - ttime);
+    startInertia((e.changedTouches[0].clientX - tx) / Math.max(1, Date.now() - ttime));
   }, { passive: true });
 
   window.addEventListener("resize", adjustTranslate);
