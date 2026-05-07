@@ -4,6 +4,11 @@
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
+  :root {
+    --card-w: clamp(110px, 16vw, 200px);
+    --card-h: calc(var(--card-w) * 1.406);
+  }
+
   html, body {
     background: #080810;
     min-height: 100%;
@@ -88,8 +93,8 @@
   .card-slot.side-3 { transform: scale(0.54); opacity: 0.12; }
 
   .card-inner {
-    width: 128px;
-    height: 180px;
+    width: var(--card-w);
+    height: var(--card-h);
     position: relative;
     transform-style: preserve-3d;
     transition: transform 0.7s cubic-bezier(0.4,0,0.2,1);
@@ -125,8 +130,8 @@
     bottom: 0;
     left: 50%;
     transform: translateX(-50%);
-    width: 78px;
-    height: 108px;
+    width: calc(var(--card-w) * 0.61);
+    height: calc(var(--card-h) * 0.6);
   }
 
   .card-num {
@@ -198,9 +203,6 @@
     .nav-links a { font-size: 11px; }
 
     .carousel-wrap { padding: 36px 0 12px; }
-
-    .card-inner { width: 110px; height: 155px; }
-    .card-silhouette { width: 66px; height: 92px; }
 
     .info-panel { margin: 16px auto 0; }
     .info-name { font-size: 17px; }
@@ -323,7 +325,9 @@ function getClass(i) {
 
 function adjustTranslate() {
   const W = carousel.parentElement.offsetWidth;
-  const cw = 128 + 16;
+  const cardEl = carousel.querySelector(".card-inner");
+  const cardW = cardEl ? cardEl.offsetWidth : 128;
+  const cw = cardW + 16;
   const offset = W / 2 - current * cw - cw / 2;
   carousel.style.transform = `translateX(${offset}px)`;
 }
