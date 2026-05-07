@@ -2,6 +2,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
+  @font-face {
+    font-family: 'Papyrus';
+    src: url('fonts/PAPYRUS.TTF') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+  }
+
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
@@ -174,8 +181,26 @@
     min-height: 80px;
   }
 
-  .info-name { font-size: 20px; font-weight: 500; color: rgba(255,255,255,0.9); letter-spacing: -0.01em; margin-bottom: 6px; }
-  .info-desc { font-size: 13px; color: rgba(255,255,255,0.36); letter-spacing: 0.02em; line-height: 1.65; }
+  .info-name { font-size: 20px; font-weight: 500; color: rgba(255,255,255,0.9); letter-spacing: -0.01em; margin-bottom: 6px; font-family: Papyrus, fantasy; }
+  .info-desc { font-size: 13px; color: rgba(255,255,255,0.36); letter-spacing: 0.02em; line-height: 1.65; font-family: Papyrus, fantasy; }
+
+  .bgm-btn {
+    position: fixed;
+    bottom: 18px;
+    left: 18px;
+    z-index: 200;
+    background: rgba(255,255,255,0.05);
+    border: 0.5px solid rgba(255,255,255,0.12);
+    border-radius: 16px;
+    padding: 5px 11px;
+    color: rgba(255,255,255,0.28);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    cursor: pointer;
+    transition: background 0.3s, color 0.3s, opacity 0.3s;
+    user-select: none;
+  }
+  .bgm-btn:hover { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.55); }
 
   .flip-hint { font-size: 11px; color: rgba(255,255,255,0.16); letter-spacing: 0.08em; text-align: center; margin: 12px 0 4px; position: relative; z-index: 5; }
 
@@ -264,6 +289,12 @@
   0%, 100% { box-shadow: 0 0 5px rgba(255, 200, 60, 0.10); }
   50%       { box-shadow: 0 0 13px rgba(255, 200, 60, 0.24); }
 }
+
+@keyframes card-spin {
+  0%   { transform: rotateY(0deg); animation-timing-function: linear; }
+  85%  { transform: rotateY(918deg); animation-timing-function: ease-out; }
+  100% { transform: rotateY(1080deg); }
+}
 </style>
 
 <div class="site-frame">
@@ -281,34 +312,35 @@
   <div class="carousel-wrap">
     <div id="special-card-overlay"
          style="display:none; position:absolute; top:0; left:0; right:0; bottom:0;
-                z-index:20; pointer-events:none; perspective:900px;
+                z-index:20; pointer-events:none;
                 align-items:center; justify-content:center;">
-      <div id="special-card-drop"
-           style="width:var(--card-w); height:var(--card-h); border-radius:11px;
-                  position:relative; transform-style:preserve-3d;
-                  transform:translateY(-120vh) rotateY(0deg);">
-        <div style="position:absolute;inset:0;border-radius:11px;overflow:hidden;
-                    backface-visibility:hidden;border:0.5px solid rgba(255,255,255,0.12);">
-          <img src="images/image999.jpg"
-               style="width:100%;height:100%;object-fit:cover;display:block;"
-               draggable="false">
-        </div>
-        <div style="position:absolute;inset:0;border-radius:11px;overflow:hidden;
-                    backface-visibility:hidden;transform:rotateY(180deg);
-                    background:linear-gradient(160deg,#141e38 0%,#0a1020 100%);
-                    border:0.5px solid rgba(255,255,255,0.1);
-                    display:flex;flex-direction:column;align-items:center;justify-content:center;
-                    padding:16px 12px;gap:6px;">
-          <div style="font-size:22px;margin-bottom:2px;">✦</div>
-          <div style="font-size:11px;font-weight:500;color:rgba(255,255,255,0.88);letter-spacing:0.04em;text-align:center;">&amp;You</div>
-          <div style="font-size:9px;color:rgba(255,255,255,0.38);letter-spacing:0.04em;text-align:center;line-height:1.6;">サンプルテキスト</div>
+      <div id="special-card-fall" style="perspective:900px; transform:translateY(-50vh);">
+        <div id="special-card-drop"
+             style="width:var(--card-w); height:var(--card-h); border-radius:11px;
+                    position:relative; transform-style:preserve-3d; transform:rotateY(0deg);">
+          <div style="position:absolute;inset:0;border-radius:11px;overflow:hidden;
+                      backface-visibility:hidden;border:0.5px solid rgba(255,255,255,0.12);">
+            <img src="images/image999.jpg"
+                 style="width:100%;height:100%;object-fit:cover;display:block;"
+                 draggable="false">
+          </div>
+          <div style="position:absolute;inset:0;border-radius:11px;overflow:hidden;
+                      backface-visibility:hidden;transform:rotateY(180deg);
+                      background:linear-gradient(160deg,#141e38 0%,#0a1020 100%);
+                      border:0.5px solid rgba(255,255,255,0.1);
+                      display:flex;flex-direction:column;align-items:center;justify-content:center;
+                      padding:16px 12px;gap:6px;">
+            <div style="font-size:22px;margin-bottom:2px;">✦</div>
+            <div style="font-size:11px;font-weight:500;color:rgba(255,255,255,0.88);letter-spacing:0.04em;text-align:center;">&amp;You</div>
+            <div style="font-size:9px;color:rgba(255,255,255,0.38);letter-spacing:0.04em;text-align:center;line-height:1.6;">Sample text</div>
+          </div>
         </div>
       </div>
     </div>
     <div class="carousel-track" id="carousel"></div>
   </div>
 
-  <p class="flip-hint">タップして裏面を見る</p>
+  <p class="flip-hint">tap to flip</p>
 
   <div class="info-panel">
     <p class="info-name" id="infoName"></p>
@@ -316,18 +348,21 @@
   </div>
 
   <div class="nav-dots" id="navDots"></div>
-  <div class="footer-line">airele fan card project</div>
+  <div class="footer-line">sky airrace collection card project</div>
 </div>
+
+<audio id="bgm" src="bgm/蒼穹.mp3" loop preload="auto"></audio>
+<button class="bgm-btn" id="bgmBtn">♪ MUTE</button>
 
 <script>
 const players = [
-  { num:"01", name:"サンプル 1", desc:"サンプルサンプルサンプルサンプルサンプル", emoji:"🌊", frontImg:"images/image1.jpg" },
-  { num:"02", name:"サンプル 2", desc:"サンプルサンプルサンプルサンプルサンプル", emoji:"⚡", frontImg:"images/image2.jpg" },
-  { num:"03", name:"サンプル 3", desc:"サンプルサンプルサンプルサンプルサンプル", emoji:"✨", frontImg:"images/image3.jpg" },
-  { num:"04", name:"サンプル 4", desc:"サンプルサンプルサンプルサンプルサンプル", emoji:"🌙", frontImg:"images/image4.jpg" },
-  { num:"05", name:"サンプル 5", desc:"サンプルサンプルサンプルサンプルサンプル", emoji:"☁️", frontImg:"images/image5.jpg" },
-  { num:"06", name:"サンプル 6", desc:"サンプルサンプルサンプルサンプルサンプル", emoji:"🌅", frontImg:"images/image6.jpg" },
-  { num:"07", name:"サンプル 7", desc:"サンプルサンプルサンプルサンプルサンプル", emoji:"🌟", frontImg:"images/image7.jpg" },
+  { num:"01", name:"Sample 01", desc:"Sample text goes here for this card", emoji:"🌊", frontImg:"images/image1.jpg" },
+  { num:"02", name:"Sample 02", desc:"Sample text goes here for this card", emoji:"⚡", frontImg:"images/image2.jpg" },
+  { num:"03", name:"Sample 03", desc:"Sample text goes here for this card", emoji:"✨", frontImg:"images/image3.jpg" },
+  { num:"04", name:"Sample 04", desc:"Sample text goes here for this card", emoji:"🌙", frontImg:"images/image4.jpg" },
+  { num:"05", name:"Sample 05", desc:"Sample text goes here for this card", emoji:"☁️", frontImg:"images/image5.jpg" },
+  { num:"06", name:"Sample 06", desc:"Sample text goes here for this card", emoji:"🌅", frontImg:"images/image6.jpg" },
+  { num:"07", name:"Sample 07", desc:"Sample text goes here for this card", emoji:"🌟", frontImg:"images/image7.jpg" },
 ];
 
 const GRADIENTS = [
@@ -529,7 +564,7 @@ function render() {
     infoDesc.textContent = p.desc;
   } else if (revealDone) {
     infoName.textContent = "&You";
-    infoDesc.textContent = "サンプルテキスト";
+    infoDesc.textContent = "Sample text";
   } else {
     infoName.textContent = "";
     infoDesc.textContent = "";
@@ -547,63 +582,73 @@ function triggerReveal() {
   const infoPanelEl  = document.querySelector(".info-panel");
   const flipHintEl   = document.querySelector(".flip-hint");
   const overlay      = document.getElementById("special-card-overlay");
+  const fall         = document.getElementById("special-card-fall");
   const drop         = document.getElementById("special-card-drop");
 
   // ─── Phase 1: コンテンツをフェードアウト（1.0s） ───
   [carousel, infoPanelEl, navDots, flipHintEl].forEach(el => {
     if (!el) return;
-    el.style.transition = "opacity 0.35s ease";
+    el.style.transition = "opacity 1s ease";
     el.style.opacity    = "0";
   });
 
   setTimeout(() => {
-    carousel.style.visibility = "hidden";
-
-    // ─── Phase 2: 落下 + 回転アニメーション（2.8s） ───
+    // ─── Phase 2: オーバーレイ表示・暗転（1s 待機） ───
     overlay.style.display = "flex";
-    drop.style.transition = "none";
-    drop.style.transform  = "translateY(-120vh) rotateY(0deg)";
-    drop.getBoundingClientRect(); // reflow
-
-    drop.style.transition = "transform 14s cubic-bezier(0.12, 0.8, 0.3, 1)";
-    drop.style.transform  = "translateY(0px) rotateY(1080deg)";
+    fall.getBoundingClientRect(); // force layout for offsetHeight
+    const startY = -(overlay.offsetHeight / 2 + (drop.offsetHeight || 180) / 2 + 2);
+    fall.style.transition = "none";
+    fall.style.transform  = `translateY(${startY}px)`;
+    drop.style.animation  = "none";
+    drop.style.transform  = "rotateY(0deg)";
+    fall.getBoundingClientRect(); // reflow
 
     setTimeout(() => {
-      // ─── Phase 3: 静止（1.2s） ───
+      // ─── Phase 2b: 落下 + 回転アニメーション ───
+      fall.style.transition = "transform 6s linear";
+      fall.style.transform  = "translateY(0px)";
+      drop.style.transform  = "";
+      drop.style.animation  = "card-spin 8s forwards";
 
       setTimeout(() => {
-        // ─── Phase 4: カルーセル復帰（0.8s） ───
-        revealDone = true;
-
-        // ゴーストスロットを特殊カードに切り替え
-        document.getElementById("ghost-hint").style.display   = "none";
-        document.getElementById(`ci-${SPECIAL_IDX}`).style.display = "block";
-
-        // オーバーレイをフェードアウト
-        overlay.style.transition = "opacity 0.6s ease";
-        overlay.style.opacity    = "0";
-
-        // カルーセルをぼんやり復帰
-        carousel.style.visibility = "visible";
-        [carousel, infoPanelEl, navDots, flipHintEl].forEach(el => {
-          if (!el) return;
-          el.style.transition = "opacity 0.8s ease";
-          el.style.opacity    = "1";
-        });
-
-        render(); // 8つ目のdot・info-panel を更新
+        // ─── Phase 3: 静止（1.2s） ───
 
         setTimeout(() => {
-          overlay.style.display  = "none";
-          overlay.style.opacity  = "1"; // 次回用にリセット
-          drop.style.transition  = "none";
-          drop.style.transform   = "translateY(-120vh) rotateY(0deg)";
-          revealing = false;
-        }, 800);
+          // ─── Phase 4: カルーセル復帰（0.8s） ───
+          revealDone = true;
 
-      }, 1200); // Phase 3
-    }, 14000);  // Phase 2
-  }, 350);      // Phase 1
+          // ゴーストスロットを特殊カードに切り替え
+          document.getElementById("ghost-hint").style.display   = "none";
+          document.getElementById(`ci-${SPECIAL_IDX}`).style.display = "block";
+
+          // オーバーレイをフェードアウト
+          overlay.style.transition = "opacity 0.6s ease";
+          overlay.style.opacity    = "0";
+
+          // カルーセルをぼんやり復帰
+          carousel.style.visibility = "visible";
+          [carousel, infoPanelEl, navDots, flipHintEl].forEach(el => {
+            if (!el) return;
+            el.style.transition = "opacity 0.8s ease";
+            el.style.opacity    = "1";
+          });
+
+          render(); // 8つ目のdot・info-panel を更新
+
+          setTimeout(() => {
+            overlay.style.display  = "none";
+            overlay.style.opacity  = "1"; // 次回用にリセット
+            fall.style.transition  = "none";
+            fall.style.transform   = `translateY(${startY}px)`;
+            drop.style.animation   = "none";
+            drop.style.transform   = "rotateY(0deg)";
+            revealing = false;
+          }, 800);
+
+        }, 1200); // Phase 3
+      }, 8000);   // Phase 2b
+    }, 1000);     // 暗転待機
+  }, 100);        // Phase 1
 }
 
 function init() {
@@ -631,7 +676,7 @@ function init() {
                 padding:16px 12px;gap:6px">
       <div class="back-emoji">✦</div>
       <div class="back-name">&amp;You</div>
-      <div class="back-stat">サンプルテキスト</div>
+      <div class="back-stat">Sample text</div>
     </div>
   </div>`;
   carousel.appendChild(ghostSlot);
@@ -713,4 +758,42 @@ function init() {
 }
 
 init();
+
+// BGM
+(function() {
+  const bgm = document.getElementById("bgm");
+  const btn = document.getElementById("bgmBtn");
+  bgm.volume = 0.28;
+  bgm.muted = false;
+  let playing = false;
+  btn.textContent = "♪ ON";
+
+  function startPlay() {
+    if (playing) return;
+    playing = true;
+    bgm.play().catch(() => { playing = false; });
+  }
+
+  // 最初のユーザー操作から3秒後に再生（autoplay制限の回避）
+  function onFirstInteraction() {
+    document.removeEventListener("touchstart", onFirstInteraction);
+    document.removeEventListener("mousedown", onFirstInteraction);
+    setTimeout(startPlay, 1000);
+  }
+  document.addEventListener("touchstart", onFirstInteraction, { passive: true });
+  document.addEventListener("mousedown", onFirstInteraction);
+
+  // ボタンクリック：未再生なら開始、再生中はミュート切替
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (!playing || bgm.paused) {
+      startPlay();
+      bgm.muted = false;
+      btn.textContent = "♪ ON";
+    } else {
+      bgm.muted = !bgm.muted;
+      btn.textContent = bgm.muted ? "♪ OFF" : "♪ ON";
+    }
+  });
+})();
 </script>
