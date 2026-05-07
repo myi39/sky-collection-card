@@ -455,6 +455,7 @@ function updateHighlight(offset) {
     carousel.querySelectorAll(".card-slot").forEach((s, i) => {
       s.className = "card-slot " + getClass(i);
     });
+    if (current === SPECIAL_IDX && !revealDone) triggerReveal();
   }
 }
 
@@ -524,6 +525,73 @@ function render() {
 }
 
 function navigateTo(idx) { current = idx; render(); }
+
+function triggerReveal() {
+  if (revealing || revealDone) return;
+  revealing = true;
+  cancelInertia();
+
+  const infoPanelEl  = document.querySelector(".info-panel");
+  const flipHintEl   = document.querySelector(".flip-hint");
+  const overlay      = document.getElementById("special-card-overlay");
+  const drop         = document.getElementById("special-card-drop");
+
+  // ─── Phase 1: コンテンツをフェードアウト（1.0s） ───
+  [carousel, infoPanelEl, navDots, flipHintEl].forEach(el => {
+    if (!el) return;
+    el.style.transition = "opacity 1.0s ease";
+    el.style.opacity    = "0";
+  });
+
+  setTimeout(() => {
+    carousel.style.visibility = "hidden";
+
+    // ─── Phase 2: 落下 + 回転アニメーション（2.8s） ───
+    overlay.style.display = "flex";
+    drop.style.transition = "none";
+    drop.style.transform  = "translateY(-120vh) rotateY(0deg)";
+    drop.getBoundingClientRect(); // reflow
+
+    drop.style.transition = "transform 2.8s cubic-bezier(0.12, 0.8, 0.3, 1)";
+    drop.style.transform  = "translateY(0px) rotateY(1080deg)";
+
+    setTimeout(() => {
+      // ─── Phase 3: 静止（1.2s） ───
+
+      setTimeout(() => {
+        // ─── Phase 4: カルーセル復帰（0.8s） ───
+        revealDone = true;
+
+        // ゴーストスロットを特殊カードに切り替え
+        document.getElementById("ghost-hint").style.display   = "none";
+        document.getElementById(`ci-${SPECIAL_IDX}`).style.display = "block";
+
+        // オーバーレイをフェードアウト
+        overlay.style.transition = "opacity 0.6s ease";
+        overlay.style.opacity    = "0";
+
+        // カルーセルをぼんやり復帰
+        carousel.style.visibility = "visible";
+        [carousel, infoPanelEl, navDots, flipHintEl].forEach(el => {
+          if (!el) return;
+          el.style.transition = "opacity 0.8s ease";
+          el.style.opacity    = "1";
+        });
+
+        render(); // 8つ目のdot・info-panel を更新
+
+        setTimeout(() => {
+          overlay.style.display  = "none";
+          overlay.style.opacity  = "1"; // 次回用にリセット
+          drop.style.transition  = "none";
+          drop.style.transform   = "translateY(-120vh) rotateY(0deg)";
+          revealing = false;
+        }, 800);
+
+      }, 1200); // Phase 3
+    }, 2800);   // Phase 2
+  }, 1000);     // Phase 1
+}
 
 function init() {
   buildStars();
@@ -614,6 +682,15 @@ function init() {
           carousel.style.transition = "";
           if (cardSlot.classList.contains("center")) doFlip(idx);
           else navigateTo(idx);
+          return;
+        }
+      } else if (!didTouchDrag && dt < 250) {
+        const ghostEl = e.target.closest(".ghost-slot");
+        if (ghostEl && revealDone && current === SPECIAL_IDX) {
+          touchHandled = true;
+          setTimeout(() => { touchHandled = false; }, 400);
+          carousel.style.transition = "";
+          doFlip(SPECIAL_IDX);
           return;
         }
       }
