@@ -625,7 +625,7 @@ function init() {
 
   // ゴーストスロット — クリック（PC）
   ghostSlot.querySelector(".card-inner").addEventListener("click", () => {
-    if (didDrag || !revealDone) return;
+    if (didDrag || touchHandled || !revealDone) return;
     if (current === SPECIAL_IDX) doFlip(SPECIAL_IDX);
   });
 
