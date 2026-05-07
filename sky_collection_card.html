@@ -125,6 +125,14 @@
 
   .card-sky { position: absolute; inset: 0; }
 
+  .card-front-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
   .card-silhouette {
     position: absolute;
     bottom: 0;
@@ -239,13 +247,13 @@
 
 <script>
 const players = [
-  { num:"01", name:"サンプル 1", desc:"サンプルサンプルサンプルサンプルサンプル", emoji:"🌊" },
-  { num:"02", name:"サンプル 2", desc:"サンプルサンプルサンプルサンプルサンプル", emoji:"⚡" },
-  { num:"03", name:"サンプル 3", desc:"サンプルサンプルサンプルサンプルサンプル", emoji:"✨" },
-  { num:"04", name:"サンプル 4", desc:"サンプルサンプルサンプルサンプルサンプル", emoji:"🌙" },
-  { num:"05", name:"サンプル 5", desc:"サンプルサンプルサンプルサンプルサンプル", emoji:"☁️" },
-  { num:"06", name:"サンプル 6", desc:"サンプルサンプルサンプルサンプルサンプル", emoji:"🌅" },
-  { num:"07", name:"サンプル 7", desc:"サンプルサンプルサンプルサンプルサンプル", emoji:"🌟" },
+  { num:"01", name:"サンプル 1", desc:"サンプルサンプルサンプルサンプルサンプル", emoji:"🌊", frontImg:"images/image1.jpg" },
+  { num:"02", name:"サンプル 2", desc:"サンプルサンプルサンプルサンプルサンプル", emoji:"⚡", frontImg:"images/image2.jpg" },
+  { num:"03", name:"サンプル 3", desc:"サンプルサンプルサンプルサンプルサンプル", emoji:"✨", frontImg:"images/image3.jpg" },
+  { num:"04", name:"サンプル 4", desc:"サンプルサンプルサンプルサンプルサンプル", emoji:"🌙", frontImg:"images/image4.jpg" },
+  { num:"05", name:"サンプル 5", desc:"サンプルサンプルサンプルサンプルサンプル", emoji:"☁️", frontImg:"images/image5.jpg" },
+  { num:"06", name:"サンプル 6", desc:"サンプルサンプルサンプルサンプルサンプル", emoji:"🌅", frontImg:"images/image6.jpg" },
+  { num:"07", name:"サンプル 7", desc:"サンプルサンプルサンプルサンプルサンプル", emoji:"🌟", frontImg:"images/image7.jpg" },
 ];
 
 const GRADIENTS = [
@@ -284,8 +292,7 @@ function buildCard(p, idx) {
   slot.innerHTML = `
     <div class="card-inner" id="ci-${idx}">
       <div class="card-face">
-        <div class="card-sky" style="background:linear-gradient(155deg,${c1} 0%,${c2} 100%)"></div>
-        ${silSVG(idx)}
+        <img src="${p.frontImg}" class="card-front-img" alt="${p.name}">
         <div class="card-num">${p.num}</div>
         <div class="card-name-front">${p.name}</div>
       </div>
