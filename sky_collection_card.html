@@ -960,4 +960,88 @@ init();
     }
   });
 })();
+
+// ─── Three.js Lazy Loader ────────────────────────────────────
+let _threeCache = null;
+async function loadThree() {
+  if (_threeCache) return _threeCache;
+  const [THREE, { GLTFLoader }, { OrbitControls }] = await Promise.all([
+    import('three'),
+    import('three/addons/loaders/GLTFLoader.js'),
+    import('three/addons/controls/OrbitControls.js'),
+  ]);
+  _threeCache = { THREE, GLTFLoader, OrbitControls };
+  return _threeCache;
+}
+
+// ─── Plan A ──────────────────────────────────────────────────
+let planARenderer = null, planACamera = null, planAScene = null;
+let planAControls = null, planAAnimId = null;
+
+function getCardDims() {
+  const el = carousel.querySelector('.card-inner');
+  return el ? { w: el.offsetWidth, h: el.offsetHeight } : { w: 240, h: 338 };
+}
+
+async function planA_init() {
+  const { THREE, GLTFLoader, OrbitControls } = await loadThree();
+  const canvas = document.getElementById('canvas-plan-a');
+  const { w, h } = getCardDims();
+
+  planAScene = new THREE.Scene();
+  planACamera = new THREE.PerspectiveCamera(45, w / h, 0.01, 1000);
+
+  // Lights
+  planAScene.add(new THREE.AmbientLight(0xffffff, 1.2));
+  const dir = new THREE.DirectionalLight(0xffffff, 1.8);
+  dir.position.set(3, 5, 4);
+  planAScene.add(dir);
+
+  // Renderer
+  planARenderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  planARenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  planARenderer.setSize(w, h);
+  planARenderer.setClearColor(0x0a1020, 1);
+
+  // OrbitControls
+  planAControls = new OrbitControls(planACamera, canvas);
+  planAControls.enableDamping = true;
+  planAControls.dampingFactor = 0.06;
+  planAControls.enablePan = false;
+
+  // Load GLTF
+  const loader = new GLTFLoader();
+  loader.load(players[0].modelSrc, gltf => {
+    const box = new THREE.Box3().setFromObject(gltf.scene);
+    const center = box.getCenter(new THREE.Vector3());
+    const size = box.getSize(new THREE.Vector3());
+    const maxDim = Math.max(size.x, size.y, size.z);
+    gltf.scene.position.sub(center);
+    planACamera.position.set(0, 0, maxDim * 2.2);
+    planAControls.update();
+    planAScene.add(gltf.scene);
+  });
+
+  // Animation loop
+  function animate() {
+    planAAnimId = requestAnimationFrame(animate);
+    planAControls.update();
+    planARenderer.render(planAScene, planACamera);
+  }
+  animate();
+
+  // Resize handler
+  window.addEventListener('resize', () => {
+    if (viewMode !== 'plan-a' || !planARenderer) return;
+    const { w: nw, h: nh } = getCardDims();
+    planARenderer.setSize(nw, nh);
+    planACamera.aspect = nw / nh;
+    planACamera.updateProjectionMatrix();
+  });
+}
+
+function planA_onCardChange() {
+  // Future: swap model when players[current].modelSrc differs
+  // Currently all cards share the same model — no-op
+}
 </script>
