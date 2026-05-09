@@ -448,6 +448,7 @@
   </nav>
 
   <div class="carousel-wrap">
+    <canvas id="canvas-plan-a"></canvas>
     <div id="special-card-overlay"
          style="display:none; position:absolute; top:0; left:0; right:0; bottom:0;
                 z-index:20; pointer-events:none;
@@ -487,10 +488,28 @@
 
   <div class="nav-dots" id="navDots"></div>
   <div class="footer-line">sky airrace collection card project</div>
+  <div id="modal-3d">
+    <button class="modal-3d-close" id="modal3dClose">✕</button>
+    <canvas id="modal-3d-canvas"></canvas>
+    <p class="modal-3d-name" id="modal3dName"></p>
+  </div>
 </div>
 
 <audio id="bgm" src="bgm/蒼穹.mp3" loop preload="auto"></audio>
 <button class="bgm-btn" id="bgmBtn">♪ MUTE</button>
+
+<div class="view-mode-sel" id="viewModeSel">
+  <div class="vms-label">View Mode</div>
+  <div class="vms-opt active" data-mode="image">
+    <div class="vms-dot"></div><span class="vms-txt">現在（画像）</span>
+  </div>
+  <div class="vms-opt" data-mode="plan-a">
+    <div class="vms-dot"></div><span class="vms-txt">案A（3Dに置換）</span>
+  </div>
+  <div class="vms-opt" data-mode="plan-b">
+    <div class="vms-dot"></div><span class="vms-txt">案B（ボタンで3D）</span>
+  </div>
+</div>
 
 <script>
 const players = [
