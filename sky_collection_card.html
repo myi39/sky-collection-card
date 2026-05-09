@@ -1107,4 +1107,54 @@ function closeModal3d() {
   if (modalRenderer) { modalRenderer.dispose(); modalRenderer = null; }
   modalControls = null;
 }
+
+// ─── Mode Switching ───────────────────────────────────────────
+function setViewMode(mode) {
+  viewMode = mode;
+
+  // セレクター UI 更新
+  document.querySelectorAll('.vms-opt').forEach(el => {
+    el.classList.toggle('active', el.dataset.mode === mode);
+  });
+
+  const canvasA = document.getElementById('canvas-plan-a');
+
+  if (mode === 'plan-a') {
+    canvasA.style.display = 'block';
+    if (!planARenderer) {
+      planA_init(); // 初回のみ初期化
+    }
+  } else {
+    canvasA.style.display = 'none';
+    if (planAAnimId) { cancelAnimationFrame(planAAnimId); planAAnimId = null; }
+  }
+
+  // Plan B ボタンの表示切替
+  document.querySelectorAll('.btn-3d').forEach(btn => {
+    btn.style.display = mode === 'plan-b' ? 'block' : 'none';
+  });
+
+  // Plan B 以外に切り替えたらモーダルを閉じる
+  if (mode !== 'plan-b') closeModal3d();
+
+  // Plan A に切り替えた場合、アニメーションを再開
+  if (mode === 'plan-a' && planARenderer && !planAAnimId) {
+    (function animate() {
+      planAAnimId = requestAnimationFrame(animate);
+      planAControls.update();
+      planARenderer.render(planAScene, planACamera);
+    })();
+  }
+}
+
+// View mode selector
+document.querySelectorAll('.vms-opt').forEach(el => {
+  el.addEventListener('click', () => setViewMode(el.dataset.mode));
+});
+
+// Modal close button and backdrop click
+document.getElementById('modal3dClose').addEventListener('click', closeModal3d);
+document.getElementById('modal-3d').addEventListener('click', e => {
+  if (e.target === document.getElementById('modal-3d')) closeModal3d();
+});
 </script>
