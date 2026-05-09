@@ -1044,4 +1044,67 @@ function planA_onCardChange() {
   // Future: swap model when players[current].modelSrc differs
   // Currently all cards share the same model — no-op
 }
+
+// ─── Plan B ──────────────────────────────────────────────────
+let modalRenderer = null, modalControls = null, modalAnimId = null;
+
+async function openModal3d(idx) {
+  const p = (idx >= 0 && idx < players.length) ? players[idx] : { name: '&You', modelSrc: '3d/3d_sample_hal.gltf' };
+  document.getElementById('modal3dName').textContent = p.name;
+
+  const modal = document.getElementById('modal-3d');
+  modal.classList.add('open');
+
+  const { THREE, GLTFLoader, OrbitControls } = await loadThree();
+  const canvas = document.getElementById('modal-3d-canvas');
+
+  // キャンバスの表示サイズを取得（CSS で決まる）
+  const rect = canvas.getBoundingClientRect();
+  const w = rect.width || 400;
+  const h = rect.height || 400;
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(45, w / h, 0.01, 1000);
+
+  scene.add(new THREE.AmbientLight(0xffffff, 1.2));
+  const dir = new THREE.DirectionalLight(0xffffff, 1.8);
+  dir.position.set(3, 5, 4);
+  scene.add(dir);
+
+  modalRenderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  modalRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  modalRenderer.setSize(w, h);
+  modalRenderer.setClearColor(0x04040f, 1);
+
+  modalControls = new OrbitControls(camera, canvas);
+  modalControls.enableDamping = true;
+  modalControls.dampingFactor = 0.06;
+  modalControls.enablePan = false;
+
+  const loader = new GLTFLoader();
+  loader.load(p.modelSrc, gltf => {
+    const box = new THREE.Box3().setFromObject(gltf.scene);
+    const center = box.getCenter(new THREE.Vector3());
+    const size = box.getSize(new THREE.Vector3());
+    const maxDim = Math.max(size.x, size.y, size.z);
+    gltf.scene.position.sub(center);
+    camera.position.set(0, 0, maxDim * 2.2);
+    modalControls.update();
+    scene.add(gltf.scene);
+  });
+
+  function animate() {
+    modalAnimId = requestAnimationFrame(animate);
+    modalControls.update();
+    modalRenderer.render(scene, camera);
+  }
+  animate();
+}
+
+function closeModal3d() {
+  document.getElementById('modal-3d').classList.remove('open');
+  if (modalAnimId) { cancelAnimationFrame(modalAnimId); modalAnimId = null; }
+  if (modalRenderer) { modalRenderer.dispose(); modalRenderer = null; }
+  modalControls = null;
+}
 </script>
