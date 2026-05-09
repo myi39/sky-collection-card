@@ -304,6 +304,135 @@
   85%  { transform: rotateY(918deg); animation-timing-function: ease-out; }
   100% { transform: rotateY(1080deg); }
 }
+
+/* ─── View Mode Selector ─────────────────────────────── */
+.view-mode-sel {
+  position: fixed;
+  bottom: 18px;
+  right: 18px;
+  z-index: 200;
+  background: rgba(8,8,20,0.92);
+  border: 0.5px solid rgba(255,255,255,0.13);
+  border-radius: 10px;
+  padding: 8px 10px;
+  min-width: 148px;
+  backdrop-filter: blur(8px);
+}
+.vms-label {
+  font-size: 8px;
+  color: rgba(255,255,255,0.22);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.vms-opt {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 7px;
+  border-radius: 5px;
+  cursor: pointer;
+  margin-bottom: 2px;
+  transition: background 0.2s;
+}
+.vms-opt:last-child { margin-bottom: 0; }
+.vms-opt:hover { background: rgba(255,255,255,0.05); }
+.vms-opt.active { background: rgba(255,255,255,0.08); }
+.vms-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.28);
+  flex-shrink: 0;
+  transition: background 0.2s, border-color 0.2s;
+}
+.vms-opt.active .vms-dot { background: rgba(255,255,255,0.75); border-color: transparent; }
+.vms-txt {
+  font-size: 10px;
+  color: rgba(255,255,255,0.36);
+  letter-spacing: 0.05em;
+  transition: color 0.2s;
+}
+.vms-opt.active .vms-txt { color: rgba(255,255,255,0.82); }
+
+/* ─── Plan A: canvas overlay ─────────────────────────── */
+#canvas-plan-a {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: var(--card-w);
+  height: var(--card-h);
+  z-index: 15;
+  display: none;
+  border-radius: 11px;
+  border: 0.5px solid rgba(255,255,255,0.12);
+  pointer-events: auto;
+}
+
+/* ─── Plan B: 3D button above card slot ──────────────── */
+.card-slot { position: relative; }
+.btn-3d {
+  position: absolute;
+  top: 6px;
+  right: 4px;
+  z-index: 20;
+  background: rgba(0,0,0,0.45);
+  backdrop-filter: blur(6px);
+  border: 0.5px solid rgba(255,255,255,0.22);
+  border-radius: 4px;
+  padding: 3px 8px;
+  font-size: 9px;
+  color: rgba(255,255,255,0.7);
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  display: none;
+  transition: background 0.2s, color 0.2s;
+  font-family: inherit;
+}
+.btn-3d:hover { background: rgba(0,0,0,0.65); color: rgba(255,255,255,0.95); }
+
+/* ─── Plan B: modal ──────────────────────────────────── */
+#modal-3d {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  background: rgba(4,4,16,0.96);
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+#modal-3d.open { display: flex; }
+#modal-3d-canvas {
+  width: min(80vw, 80vh, 500px);
+  height: min(80vw, 80vh, 500px);
+  border-radius: 14px;
+  border: 0.5px solid rgba(255,255,255,0.12);
+  display: block;
+}
+.modal-3d-name {
+  margin-top: 18px;
+  font-size: 13px;
+  color: rgba(255,255,255,0.5);
+  letter-spacing: 0.1em;
+  font-family: Papyrus, fantasy;
+}
+.modal-3d-close {
+  position: absolute;
+  top: 20px;
+  right: 24px;
+  font-size: 22px;
+  color: rgba(255,255,255,0.28);
+  cursor: pointer;
+  background: none;
+  border: none;
+  line-height: 1;
+  padding: 4px;
+  transition: color 0.2s;
+  font-family: inherit;
+}
+.modal-3d-close:hover { color: rgba(255,255,255,0.7); }
 </style>
 
 <div class="site-frame">
