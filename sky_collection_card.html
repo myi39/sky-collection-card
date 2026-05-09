@@ -532,6 +532,7 @@ const SPECIAL_IDX = players.length; // = 7  ゴーストスロットのインデ
 let revealing  = false;             // reveal アニメーション実行中フラグ
 let revealDone = false;             // reveal 完了フラグ
 const flipped = new Set();
+let viewMode = 'image'; // 'image' | 'plan-a' | 'plan-b'
 
 const carousel = document.getElementById("carousel");
 const navDots = document.getElementById("navDots");
@@ -732,6 +733,7 @@ function render() {
     infoDesc.textContent = "";
   }
   buildDots();
+  if (typeof planA_onCardChange === 'function') planA_onCardChange(); // Plan A hook
 }
 
 function navigateTo(idx) { current = idx; render(); }
