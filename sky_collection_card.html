@@ -1049,6 +1049,7 @@ function planA_onCardChange() {
 let modalRenderer = null, modalControls = null, modalAnimId = null;
 
 async function openModal3d(idx) {
+  closeModal3d();
   const p = (idx >= 0 && idx < players.length) ? players[idx] : { name: '&You', modelSrc: '3d/3d_sample_hal.gltf' };
   document.getElementById('modal3dName').textContent = p.name;
 
