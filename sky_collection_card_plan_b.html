@@ -506,13 +506,13 @@ body.viewmode-plan-a .card-face:not(.card-back) .card-front-img {
 
 <div class="view-mode-sel" id="viewModeSel">
   <div class="vms-label">View Mode</div>
-  <div class="vms-opt active" data-mode="image">
+  <div class="vms-opt" data-mode="image">
     <div class="vms-dot"></div><span class="vms-txt">現在（画像）</span>
   </div>
   <div class="vms-opt" data-mode="plan-a">
     <div class="vms-dot"></div><span class="vms-txt">案A（3Dに置換）</span>
   </div>
-  <div class="vms-opt" data-mode="plan-b">
+  <div class="vms-opt active" data-mode="plan-b">
     <div class="vms-dot"></div><span class="vms-txt">案B（ボタンで3D）</span>
   </div>
 </div>
@@ -1167,4 +1167,6 @@ document.getElementById('modal3dClose').addEventListener('click', closeModal3d);
 document.getElementById('modal-3d').addEventListener('click', e => {
   if (e.target === document.getElementById('modal-3d')) closeModal3d();
 });
+
+setViewMode('plan-b');
 </script>
