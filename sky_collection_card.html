@@ -315,54 +315,22 @@ window.dispatchEvent(new Event('three-ready'));
 }
 
 /* ─── View Mode Selector ─────────────────────────────── */
-.view-mode-sel {
+#viewModeSel {
   position: fixed;
   bottom: 18px;
   right: 18px;
   z-index: 200;
   background: rgba(8,8,20,0.92);
-  border: 0.5px solid rgba(255,255,255,0.13);
-  border-radius: 10px;
-  padding: 8px 10px;
-  min-width: 148px;
-  backdrop-filter: blur(8px);
-}
-.vms-label {
-  font-size: 8px;
-  color: rgba(255,255,255,0.22);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  margin-bottom: 6px;
-}
-.vms-opt {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  padding: 5px 7px;
-  border-radius: 5px;
+  border: 0.5px solid rgba(255,255,255,0.2);
+  border-radius: 8px;
+  padding: 6px 10px;
+  color: rgba(255,255,255,0.75);
+  font-size: 12px;
   cursor: pointer;
-  margin-bottom: 2px;
-  transition: background 0.2s;
+  backdrop-filter: blur(8px);
+  outline: none;
+  appearance: auto;
 }
-.vms-opt:last-child { margin-bottom: 0; }
-.vms-opt:hover { background: rgba(255,255,255,0.05); }
-.vms-opt.active { background: rgba(255,255,255,0.08); }
-.vms-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  border: 1px solid rgba(255,255,255,0.28);
-  flex-shrink: 0;
-  transition: background 0.2s, border-color 0.2s;
-}
-.vms-opt.active .vms-dot { background: rgba(255,255,255,0.75); border-color: transparent; }
-.vms-txt {
-  font-size: 10px;
-  color: rgba(255,255,255,0.36);
-  letter-spacing: 0.05em;
-  transition: color 0.2s;
-}
-.vms-opt.active .vms-txt { color: rgba(255,255,255,0.82); }
 
 /* ─── Plan A: canvas overlay ─────────────────────────── */
 #canvas-plan-a {
@@ -504,18 +472,11 @@ body.viewmode-plan-a .card-face:not(.card-back) .card-front-img {
 <audio id="bgm" src="bgm/蒼穹.mp3" loop preload="auto"></audio>
 <button class="bgm-btn" id="bgmBtn">♪ MUTE</button>
 
-<div class="view-mode-sel" id="viewModeSel">
-  <div class="vms-label">View Mode</div>
-  <div class="vms-opt active" data-mode="image">
-    <div class="vms-dot"></div><span class="vms-txt">現在（画像）</span>
-  </div>
-  <div class="vms-opt" data-mode="plan-a">
-    <div class="vms-dot"></div><span class="vms-txt">案A（3Dに置換）</span>
-  </div>
-  <div class="vms-opt" data-mode="plan-b">
-    <div class="vms-dot"></div><span class="vms-txt">案B（ボタンで3D）</span>
-  </div>
-</div>
+<select id="viewModeSel">
+  <option value="image" selected>現在（画像）</option>
+  <option value="plan-a">案A（3Dに置換）</option>
+  <option value="plan-b">案B（ボタンで3D）</option>
+</select>
 
 <script>
 const players = [
@@ -1121,10 +1082,7 @@ function closeModal3d() {
 function setViewMode(mode) {
   viewMode = mode;
 
-  // セレクター UI 更新
-  document.querySelectorAll('.vms-opt').forEach(el => {
-    el.classList.toggle('active', el.dataset.mode === mode);
-  });
+  document.getElementById('viewModeSel').value = mode;
 
   document.body.classList.toggle('viewmode-plan-a', mode === 'plan-a');
 
@@ -1155,11 +1113,9 @@ const MODE_FILES = {
   'plan-a': 'sky_collection_card_plan_a.html',
   'plan-b': 'sky_collection_card_plan_b.html',
 };
-document.querySelectorAll('.vms-opt').forEach(el => {
-  el.addEventListener('click', () => {
-    const target = MODE_FILES[el.dataset.mode];
-    if (target) window.location.href = target;
-  });
+document.getElementById('viewModeSel').addEventListener('change', e => {
+  const target = MODE_FILES[e.target.value];
+  if (target) window.location.href = target;
 });
 
 // Modal close button and backdrop click

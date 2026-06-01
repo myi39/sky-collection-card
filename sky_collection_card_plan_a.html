@@ -315,54 +315,22 @@ window.dispatchEvent(new Event('three-ready'));
 }
 
 /* ─── View Mode Selector ─────────────────────────────── */
-.view-mode-sel {
+#viewModeSel {
   position: fixed;
   bottom: 18px;
   right: 18px;
   z-index: 200;
   background: rgba(8,8,20,0.92);
-  border: 0.5px solid rgba(255,255,255,0.13);
-  border-radius: 10px;
-  padding: 8px 10px;
-  min-width: 148px;
-  backdrop-filter: blur(8px);
-}
-.vms-label {
-  font-size: 8px;
-  color: rgba(255,255,255,0.22);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  margin-bottom: 6px;
-}
-.vms-opt {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  padding: 5px 7px;
-  border-radius: 5px;
+  border: 0.5px solid rgba(255,255,255,0.2);
+  border-radius: 8px;
+  padding: 6px 10px;
+  color: rgba(255,255,255,0.75);
+  font-size: 12px;
   cursor: pointer;
-  margin-bottom: 2px;
-  transition: background 0.2s;
+  backdrop-filter: blur(8px);
+  outline: none;
+  appearance: auto;
 }
-.vms-opt:last-child { margin-bottom: 0; }
-.vms-opt:hover { background: rgba(255,255,255,0.05); }
-.vms-opt.active { background: rgba(255,255,255,0.08); }
-.vms-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  border: 1px solid rgba(255,255,255,0.28);
-  flex-shrink: 0;
-  transition: background 0.2s, border-color 0.2s;
-}
-.vms-opt.active .vms-dot { background: rgba(255,255,255,0.75); border-color: transparent; }
-.vms-txt {
-  font-size: 10px;
-  color: rgba(255,255,255,0.36);
-  letter-spacing: 0.05em;
-  transition: color 0.2s;
-}
-.vms-opt.active .vms-txt { color: rgba(255,255,255,0.82); }
 
 /* ─── Plan A: canvas overlay ─────────────────────────── */
 #canvas-plan-a {
@@ -439,6 +407,14 @@ body.viewmode-plan-a .card-face:not(.card-back) .card-front-img {
   font-family: inherit;
 }
 .modal-3d-close:hover { color: rgba(255,255,255,0.7); }
+@keyframes planAResetAppear {
+  from { opacity: 0; transform: scale(0.9); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.planA-reset-show {
+  animation: planAResetAppear 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  pointer-events: auto !important;
+}
 </style>
 
 <div class="site-frame">
@@ -504,18 +480,11 @@ body.viewmode-plan-a .card-face:not(.card-back) .card-front-img {
 <audio id="bgm" src="bgm/蒼穹.mp3" loop preload="auto"></audio>
 <button class="bgm-btn" id="bgmBtn">♪ MUTE</button>
 
-<div class="view-mode-sel" id="viewModeSel">
-  <div class="vms-label">View Mode</div>
-  <div class="vms-opt" data-mode="image">
-    <div class="vms-dot"></div><span class="vms-txt">現在（画像）</span>
-  </div>
-  <div class="vms-opt active" data-mode="plan-a">
-    <div class="vms-dot"></div><span class="vms-txt">案A（3Dに置換）</span>
-  </div>
-  <div class="vms-opt" data-mode="plan-b">
-    <div class="vms-dot"></div><span class="vms-txt">案B（ボタンで3D）</span>
-  </div>
-</div>
+<select id="viewModeSel">
+  <option value="image">現在（画像）</option>
+  <option value="plan-a" selected>案A（3Dに置換）</option>
+  <option value="plan-b">案B（ボタンで3D）</option>
+</select>
 
 <script>
 const players = [
@@ -526,6 +495,11 @@ const players = [
   { num:"05", name:"Sample 05", desc:"Sample text goes here for this card", emoji:"☁️", frontImg:"images/image5.jpg", modelSrc:"3d/3d_sample_special.glb" },
   { num:"06", name:"Sample 06", desc:"Sample text goes here for this card", emoji:"🌅", frontImg:"images/image6.jpg", modelSrc:"3d/3d_sample_special.glb" },
   { num:"07", name:"Sample 07", desc:"Sample text goes here for this card", emoji:"🌟", frontImg:"images/image7.jpg", modelSrc:"3d/3d_sample_special.glb" },
+];
+
+const CARD_BG_IMAGES = [
+  'images/image_background.jpg',
+  'images/image_background_dark1.png',
 ];
 
 const GRADIENTS = [
@@ -565,10 +539,13 @@ function buildCard(p, idx) {
   slot.className = "card-slot";
   const [c1, c2] = GRADIENTS[idx % GRADIENTS.length];
 
+  const bgImg = CARD_BG_IMAGES[idx];
+  const bgStyle = bgImg ? `background-image:url('${bgImg}');background-size:cover;background-position:center;` : '';
+
   slot.innerHTML = `
     <button class="btn-3d" data-idx="${idx}">3D ▶</button>
     <div class="card-inner" id="ci-${idx}">
-      <div class="card-face">
+      <div class="card-face" style="${bgStyle}">
         <img src="${p.frontImg}" class="card-front-img" alt="${p.name}" draggable="false">
       </div>
       <div class="card-face card-back" style="background:linear-gradient(160deg,#141e38 0%,#0a1020 100%)">
@@ -582,7 +559,7 @@ function buildCard(p, idx) {
     if (didDrag || didTouchDrag || touchHandled) return;
     if (!slot.classList.contains("center")) {
       navigateTo(idx);
-    } else {
+    } else if (viewMode !== 'plan-a') {
       doFlip(idx);
     }
   });
@@ -862,7 +839,7 @@ function init() {
 
   // マウスドラッグ（リアルタイム追従 + 慣性）
   let sx = 0, stime = 0, drag = false, baseOff = 0;
-  carousel.addEventListener("mousedown", e => {
+  carousel.parentElement.addEventListener("mousedown", e => {
     cancelInertia();
     drag = true; didDrag = false;
     sx = e.clientX; stime = Date.now();
@@ -883,19 +860,19 @@ function init() {
 
   // タッチスワイプ（リアルタイム追従 + 慣性）
   let tx = 0, ttime = 0, tbaseOff = 0;
-  carousel.addEventListener("touchstart", e => {
+  carousel.parentElement.addEventListener("touchstart", e => {
     cancelInertia();
     tx = e.touches[0].clientX; ttime = Date.now();
     tbaseOff = liveOffset = getBaseOffset(current);
     didTouchDrag = false;
     carousel.style.transition = "none";
   }, { passive: true });
-  carousel.addEventListener("touchmove", e => {
+  carousel.parentElement.addEventListener("touchmove", e => {
     if (Math.abs(e.touches[0].clientX - tx) > 8) didTouchDrag = true;
     liveOffset = tbaseOff + e.touches[0].clientX - tx;
     carousel.style.transform = `translateX(${liveOffset}px)`;
   }, { passive: true });
-  carousel.addEventListener("touchend", e => {
+  carousel.parentElement.addEventListener("touchend", e => {
     const endX = e.changedTouches[0].clientX;
     const dt = Date.now() - ttime;
     // タップ判定：移動なし & 短時間
@@ -908,7 +885,7 @@ function init() {
         const idx = slots.indexOf(cardSlot);
         if (idx >= 0) {
           carousel.style.transition = "";
-          if (cardSlot.classList.contains("center")) doFlip(idx);
+          if (cardSlot.classList.contains("center") && viewMode !== 'plan-a') doFlip(idx);
           else navigateTo(idx);
           return;
         }
@@ -978,13 +955,69 @@ async function loadThree() {
 // ─── Plan A ──────────────────────────────────────────────────
 // ─── Plan A (carousel viewport renderer) ─────────────────────
 let planARenderer = null, planAAnimId = null;
-let planAScenes = [], planACameras = [], planAModels = [];
+let planAScenes = [], planACameras = [], planAModels = [], planAPivots = [];
+let planA_orbitControls = null, planA_currentCenterIdx = -1;
+let planA_OrbitControls = null, planA_orbitOverlay = null;
+let planA_resetBtn = null, planA_camDistances = [], planA_hasMoved = false, planA_resetBtnTimer = null;
 
 function planA_animate() {
   planAAnimId = requestAnimationFrame(planA_animate);
   if (!planARenderer) return;
   const wh = window.innerHeight;
   const slots = carousel.querySelectorAll('.card-slot');
+
+  // センターカードを特定し、OrbitControls を差し替える
+  let centerIdx = -1;
+  slots.forEach((slot, i) => { if (slot.classList.contains('center')) centerIdx = i; });
+
+  if (centerIdx !== planA_currentCenterIdx) {
+    if (planA_orbitControls) { planA_orbitControls.dispose(); planA_orbitControls = null; }
+    planA_currentCenterIdx = centerIdx;
+    planA_hasMoved = false;
+    clearTimeout(planA_resetBtnTimer);
+    if (planA_resetBtn) { planA_resetBtn.style.display = 'none'; planA_resetBtn.classList.remove('planA-reset-show'); }
+    if (centerIdx >= 0 && planA_OrbitControls && planACameras[centerIdx] && planA_orbitOverlay) {
+      planA_orbitControls = new planA_OrbitControls(planACameras[centerIdx], planA_orbitOverlay);
+      planA_orbitControls.enableDamping = true;
+      planA_orbitControls.dampingFactor = 0.06;
+      planA_orbitControls.enablePan = true;
+      planA_orbitControls.addEventListener('start', () => {
+        if (planA_hasMoved || !planA_resetBtn) return;
+        planA_hasMoved = true;
+        planA_resetBtnTimer = setTimeout(() => {
+          if (!planA_hasMoved || !planA_resetBtn) return;
+          planA_resetBtn.style.display = 'block';
+          planA_resetBtn.classList.remove('planA-reset-show');
+          void planA_resetBtn.offsetWidth;
+          planA_resetBtn.classList.add('planA-reset-show');
+        }, 500);
+      });
+    }
+  }
+
+  // overlay・リセットボタンをセンターカードの位置に同期
+  if (centerIdx >= 0 && planA_orbitOverlay) {
+    const face = slots[centerIdx]?.querySelector('.card-face:not(.card-back)');
+    if (face) {
+      const r = face.getBoundingClientRect();
+      planA_orbitOverlay.style.left   = r.left   + 'px';
+      planA_orbitOverlay.style.top    = r.top    + 'px';
+      planA_orbitOverlay.style.width  = r.width  + 'px';
+      planA_orbitOverlay.style.height = r.height + 'px';
+      planA_orbitOverlay.style.display = 'block';
+      if (planA_resetBtn) {
+        planA_resetBtn.style.left = (r.right - 34) + 'px';
+        planA_resetBtn.style.top  = (r.top   +  6) + 'px';
+      }
+    }
+  } else if (planA_resetBtn) {
+    planA_resetBtn.style.display = 'none';
+    planA_resetBtn.classList.remove('planA-reset-show');
+    planA_hasMoved = false;
+  }
+
+  if (planA_orbitControls) planA_orbitControls.update();
+
   planARenderer.clear();
   slots.forEach((slot, i) => {
     if (i >= planAScenes.length) return;
@@ -994,7 +1027,6 @@ function planA_animate() {
     if (!face) return;
     const rect = face.getBoundingClientRect();
     if (rect.bottom < 0 || rect.top > wh || rect.width <= 0) return;
-    model.rotation.y += 0.008;
     const bottom = wh - rect.bottom;
     planARenderer.setScissorTest(true);
     planARenderer.setScissor(rect.left, bottom, rect.width, rect.height);
@@ -1007,8 +1039,34 @@ function planA_animate() {
 }
 
 async function planA_init() {
-  const { THREE, GLTFLoader } = await loadThree();
+  const { THREE, GLTFLoader, OrbitControls } = await loadThree();
+  planA_OrbitControls = OrbitControls;
+
   const canvas = document.getElementById('canvas-plan-a');
+
+  // OrbitControls 用の透明 overlay div を作成（センターカード上に配置）
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;display:none;z-index:20;touch-action:none;cursor:grab;';
+  document.body.appendChild(overlay);
+  planA_orbitOverlay = overlay;
+
+  // リセットボタン
+  const resetBtn = document.createElement('button');
+  resetBtn.textContent = '↺';
+  resetBtn.style.cssText = 'position:fixed;display:none;z-index:21;width:22px;height:22px;border-radius:50%;border:none;background:rgba(255,255,255,0.22);color:rgba(255,255,255,0.6);font-size:12px;cursor:pointer;line-height:1;padding:0;';
+  resetBtn.addEventListener('click', () => {
+    const idx = planA_currentCenterIdx;
+    if (idx < 0 || !planACameras[idx]) return;
+    planACameras[idx].position.set(0, 0, planA_camDistances[idx] ?? 2);
+    planACameras[idx].quaternion.set(0, 0, 0, 1);
+    if (planA_orbitControls) { planA_orbitControls.target.set(0, 0, 0); planA_orbitControls.update(); }
+    planA_hasMoved = false;
+    clearTimeout(planA_resetBtnTimer);
+    resetBtn.style.display = 'none';
+    resetBtn.classList.remove('planA-reset-show');
+  });
+  document.body.appendChild(resetBtn);
+  planA_resetBtn = resetBtn;
 
   planARenderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
   planARenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -1027,18 +1085,26 @@ async function planA_init() {
   planACameras = players.map(() => new THREE.PerspectiveCamera(45, 1, 0.01, 1000));
   planAModels = new Array(players.length).fill(null);
 
+  // pivot: ベース回転（座標補正）を子に隔離し、OrbitControls はカメラ側で処理
+  planAPivots = planAScenes.map(scene => {
+    const pivot = new THREE.Object3D();
+    scene.add(pivot);
+    return pivot;
+  });
+
   const loader = new GLTFLoader();
   players.forEach((p, i) => {
     loader.load(p.modelSrc, gltf => {
-      gltf.scene.rotation.x = Math.PI / 2;
+      gltf.scene.rotation.x = Math.PI / 2; // 座標補正を子に固定
       const box = new THREE.Box3().setFromObject(gltf.scene);
       const center = box.getCenter(new THREE.Vector3());
       const size = box.getSize(new THREE.Vector3());
       const maxDim = Math.max(size.x, size.y, size.z);
       gltf.scene.position.sub(center);
       planACameras[i].position.set(0, 0, maxDim * 1.5);
+      planA_camDistances[i] = maxDim * 1.5;
       planAModels[i] = gltf.scene;
-      planAScenes[i].add(gltf.scene);
+      planAPivots[i].add(gltf.scene); // pivot の子として追加
     });
   });
 
@@ -1121,10 +1187,7 @@ function closeModal3d() {
 function setViewMode(mode) {
   viewMode = mode;
 
-  // セレクター UI 更新
-  document.querySelectorAll('.vms-opt').forEach(el => {
-    el.classList.toggle('active', el.dataset.mode === mode);
-  });
+  document.getElementById('viewModeSel').value = mode;
 
   document.body.classList.toggle('viewmode-plan-a', mode === 'plan-a');
 
@@ -1140,6 +1203,9 @@ function setViewMode(mode) {
   } else {
     canvasA.style.display = 'none';
     if (planAAnimId) { cancelAnimationFrame(planAAnimId); planAAnimId = null; }
+    if (planA_orbitControls) { planA_orbitControls.dispose(); planA_orbitControls = null; }
+    if (planA_orbitOverlay) planA_orbitOverlay.style.display = 'none';
+    if (planA_resetBtn) planA_resetBtn.style.display = 'none';
   }
 
   document.querySelectorAll('.btn-3d').forEach(btn => {
@@ -1155,11 +1221,9 @@ const MODE_FILES = {
   'plan-a': 'sky_collection_card_plan_a.html',
   'plan-b': 'sky_collection_card_plan_b.html',
 };
-document.querySelectorAll('.vms-opt').forEach(el => {
-  el.addEventListener('click', () => {
-    const target = MODE_FILES[el.dataset.mode];
-    if (target) window.location.href = target;
-  });
+document.getElementById('viewModeSel').addEventListener('change', e => {
+  const target = MODE_FILES[e.target.value];
+  if (target) window.location.href = target;
 });
 
 // Modal close button and backdrop click
