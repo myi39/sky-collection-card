@@ -349,23 +349,24 @@ body.viewmode-plan-a .card-face:not(.card-back) .card-front-img {
 .card-slot { position: relative; }
 .btn-3d {
   position: absolute;
-  top: 6px;
-  right: 4px;
+  top: -26px;
+  right: 0;
   z-index: 20;
-  background: rgba(0,0,0,0.45);
-  backdrop-filter: blur(6px);
-  border: 0.5px solid rgba(255,255,255,0.22);
-  border-radius: 4px;
-  padding: 3px 8px;
+  background: transparent;
+  border: none;
+  border-bottom: 0.5px solid rgba(255,255,255,0.25);
+  border-radius: 0;
+  padding: 2px 2px 3px;
   font-size: 9px;
-  color: rgba(255,255,255,0.7);
-  letter-spacing: 0.08em;
+  color: rgba(255,255,255,0.45);
+  letter-spacing: 0.1em;
   cursor: pointer;
   display: none;
-  transition: background 0.2s, color 0.2s;
+  transition: color 0.2s, border-color 0.2s;
   font-family: inherit;
+  white-space: nowrap;
 }
-.btn-3d:hover { background: rgba(0,0,0,0.65); color: rgba(255,255,255,0.95); }
+.btn-3d:hover { color: rgba(255,255,255,0.85); border-bottom-color: rgba(255,255,255,0.6); }
 
 /* ─── Plan B: modal ──────────────────────────────────── */
 #modal-3d {
@@ -527,7 +528,7 @@ function buildCard(p, idx) {
   const [c1, c2] = GRADIENTS[idx % GRADIENTS.length];
 
   slot.innerHTML = `
-    <button class="btn-3d" data-idx="${idx}">3D ▶</button>
+    <button class="btn-3d" data-idx="${idx}">3D で見る ›</button>
     <div class="card-inner" id="ci-${idx}">
       <div class="card-face">
         <img src="${p.frontImg}" class="card-front-img" alt="${p.name}" draggable="false">
