@@ -525,13 +525,13 @@ body.viewmode-plan-a .card-face:not(.card-back) .card-front-img {
 
 <script>
 const players = [
-  { num:"01", name:"Sample 01", desc:"Sample text goes here for this card", emoji:"🌊", frontImg:"images/image1.jpg", modelSrc:"3d/3d_sample_special.glb" },
-  { num:"02", name:"Sample 02", desc:"Sample text goes here for this card", emoji:"⚡", frontImg:"images/image2.jpg", modelSrc:"3d/3d_sample_special.glb" },
-  { num:"03", name:"Sample 03", desc:"Sample text goes here for this card", emoji:"✨", frontImg:"images/image3.jpg", modelSrc:"3d/3d_sample_special.glb" },
-  { num:"04", name:"Sample 04", desc:"Sample text goes here for this card", emoji:"🌙", frontImg:"images/image4.jpg", modelSrc:"3d/3d_sample_special.glb" },
-  { num:"05", name:"Sample 05", desc:"Sample text goes here for this card", emoji:"☁️", frontImg:"images/image5.jpg", modelSrc:"3d/3d_sample_special.glb" },
-  { num:"06", name:"Sample 06", desc:"Sample text goes here for this card", emoji:"🌅", frontImg:"images/image6.jpg", modelSrc:"3d/3d_sample_special.glb" },
-  { num:"07", name:"Sample 07", desc:"Sample text goes here for this card", emoji:"🌟", frontImg:"images/image7.jpg", modelSrc:"3d/3d_sample_special.glb" },
+  { num:"01", name:"Sample 01", desc:"Sample text goes here for this card", emoji:"🌊", frontImg:"images/image1.jpg", modelSrc:"3d/3d_andi.glb" },
+  { num:"02", name:"Sample 02", desc:"Sample text goes here for this card", emoji:"⚡", frontImg:"images/image2.jpg", modelSrc:"3d/3d_andi.glb" },
+  { num:"03", name:"Sample 03", desc:"Sample text goes here for this card", emoji:"✨", frontImg:"images/image3.jpg", modelSrc:"3d/3d_andi.glb" },
+  { num:"04", name:"Sample 04", desc:"Sample text goes here for this card", emoji:"🌙", frontImg:"images/image4.jpg", modelSrc:"3d/3d_andi.glb" },
+  { num:"05", name:"Sample 05", desc:"Sample text goes here for this card", emoji:"☁️", frontImg:"images/image5.jpg", modelSrc:"3d/3d_andi.glb" },
+  { num:"06", name:"Sample 06", desc:"Sample text goes here for this card", emoji:"🌅", frontImg:"images/image6.jpg", modelSrc:"3d/3d_andi.glb" },
+  { num:"07", name:"Sample 07", desc:"Sample text goes here for this card", emoji:"🌟", frontImg:"images/image7.jpg", modelSrc:"3d/3d_andi.glb" },
 ];
 
 const CARD_BG_IMAGES = [
@@ -635,6 +635,11 @@ function adjustTranslate() {
 
 const cardDeg = {};
 let didDrag = false, didTouchDrag = false, touchHandled = false;
+let carouselDragActive = false;
+
+function isUIElement(el) {
+  return !!el.closest('nav, .footer-line, button, select, a');
+}
 let liveOffset = 0, rafId = null;
 
 function doFlip(idx) {
@@ -876,7 +881,8 @@ function init() {
 
   // マウスドラッグ（リアルタイム追従 + 慣性）
   let sx = 0, stime = 0, drag = false, baseOff = 0;
-  carousel.addEventListener("mousedown", e => {
+  document.addEventListener("mousedown", e => {
+    if (isUIElement(e.target)) return;
     cancelInertia();
     drag = true; didDrag = false;
     sx = e.clientX; stime = Date.now();
@@ -897,19 +903,24 @@ function init() {
 
   // タッチスワイプ（リアルタイム追従 + 慣性）
   let tx = 0, ttime = 0, tbaseOff = 0;
-  carousel.addEventListener("touchstart", e => {
+  document.addEventListener("touchstart", e => {
+    if (isUIElement(e.target)) return;
+    carouselDragActive = true;
     cancelInertia();
     tx = e.touches[0].clientX; ttime = Date.now();
     tbaseOff = liveOffset = getBaseOffset(current);
     didTouchDrag = false;
     carousel.style.transition = "none";
   }, { passive: true });
-  carousel.addEventListener("touchmove", e => {
+  document.addEventListener("touchmove", e => {
+    if (!carouselDragActive) return;
     if (Math.abs(e.touches[0].clientX - tx) > 8) didTouchDrag = true;
     liveOffset = tbaseOff + e.touches[0].clientX - tx;
     carousel.style.transform = `translateX(${liveOffset}px)`;
   }, { passive: true });
-  carousel.addEventListener("touchend", e => {
+  document.addEventListener("touchend", e => {
+    if (!carouselDragActive) return;
+    carouselDragActive = false;
     if (modalInteractionBlock || document.getElementById('modal-3d').classList.contains('open')) return;
     if (e.target.closest('.btn-3d')) return;
     const endX = e.changedTouches[0].clientX;
@@ -1074,7 +1085,7 @@ let modal_camDist = 0, modal_hasMoved = false, modal_resetTimer = null;
 
 async function openModal3d(idx) {
   closeModal3d();
-  const p = (idx >= 0 && idx < players.length) ? players[idx] : { name: '&You', modelSrc: '3d/3d_sample_special.glb' };
+  const p = (idx >= 0 && idx < players.length) ? players[idx] : { name: '&You', modelSrc: '3d/3d_andi.glb' };
   document.getElementById('modal3dName').textContent = p.name;
 
   // 背景画像（sample1・2のみ）
