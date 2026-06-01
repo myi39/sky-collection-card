@@ -80,9 +80,6 @@ window.dispatchEvent(new Event('three-ready'));
     text-transform: uppercase;
   }
 
-  .nav-links { display: flex; gap: 24px; list-style: none; }
-  .nav-links a { font-size: 12px; color: rgba(255,255,255,0.4); text-decoration: none; letter-spacing: 0.05em; }
-  .nav-links a:hover { color: rgba(255,255,255,0.8); }
 
   .carousel-wrap {
     position: relative;
@@ -247,8 +244,6 @@ window.dispatchEvent(new Event('three-ready'));
 
   @media (max-width: 480px) {
     .nav { padding: 14px 16px; }
-    .nav-links { gap: 14px; }
-    .nav-links a { font-size: 11px; }
 
     .carousel-wrap { padding: 36px 0 12px; }
 
@@ -422,11 +417,6 @@ body.viewmode-plan-a .card-face:not(.card-back) .card-front-img {
 
   <nav class="nav">
     <div class="nav-logo">Collection Card</div>
-    <ul class="nav-links">
-      <li><a href="#">カード一覧</a></li>
-      <li><a href="#">アーティスト</a></li>
-      <li><a href="#">このサイトについて</a></li>
-    </ul>
   </nav>
 
   <div class="carousel-wrap">
