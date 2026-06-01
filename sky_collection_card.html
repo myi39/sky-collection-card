@@ -872,10 +872,11 @@ function init() {
       if (dx >= dy) carouselDragActive = true;
     }
     if (!carouselDragActive) return;
+    e.preventDefault(); // 横ロック確定 → 縦スクロールを止める
     if (dx > 8) didTouchDrag = true;
     liveOffset = tbaseOff + cx - tx;
     carousel.style.transform = `translateX(${liveOffset}px)`;
-  }, { passive: true });
+  }, { passive: false });
   document.addEventListener("touchend", e => {
     const wasPending = carouselDragPending;
     const wasActive = carouselDragActive;
