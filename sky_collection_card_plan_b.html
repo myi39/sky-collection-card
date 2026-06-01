@@ -862,6 +862,7 @@ function init() {
   }, { passive: true });
   carousel.addEventListener("touchend", e => {
     if (modalInteractionBlock || document.getElementById('modal-3d').classList.contains('open')) return;
+    if (e.target.closest('.btn-3d')) return;
     const endX = e.changedTouches[0].clientX;
     const dt = Date.now() - ttime;
     // タップ判定：移動なし & 短時間
