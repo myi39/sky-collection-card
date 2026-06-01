@@ -658,7 +658,7 @@ function startInertia(velPxPerMs) {
   const maxOff = getBaseOffset(0);
 
   function frame() {
-    vel *= 0.87; // 摩擦
+    vel *= 0.93; // 摩擦
     offset += vel;
     if (offset > maxOff) { offset = maxOff; vel = 0; }
     if (offset < minOff) { offset = minOff; vel = 0; }
