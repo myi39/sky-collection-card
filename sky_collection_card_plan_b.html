@@ -381,9 +381,9 @@ body.viewmode-plan-a .card-face:not(.card-back) .card-front-img {
 }
 #modal-3d.open { display: flex; }
 #modal-3d-canvas {
-  width: min(80vw, 80vh, 500px);
-  height: min(80vw, 80vh, 500px);
-  border-radius: 14px;
+  width: var(--card-w);
+  height: var(--card-h);
+  border-radius: 11px;
   display: block;
 }
 .modal-3d-name {
@@ -501,6 +501,7 @@ let revealing  = false;             // reveal アニメーション実行中フ�
 let revealDone = false;             // reveal 完了フラグ
 const flipped = new Set();
 let viewMode = 'image'; // 'image' | 'plan-a' | 'plan-b'
+let modalInteractionBlock = false;
 
 const carousel = document.getElementById("carousel");
 const navDots = document.getElementById("navDots");
@@ -541,6 +542,7 @@ function buildCard(p, idx) {
     </div>`;
 
   slot.querySelector(".card-inner").addEventListener("click", () => {
+    if (modalInteractionBlock || document.getElementById('modal-3d').classList.contains('open')) return;
     if (didDrag || didTouchDrag || touchHandled) return;
     if (!slot.classList.contains("center")) {
       navigateTo(idx);
@@ -815,6 +817,7 @@ function init() {
 
   // ゴーストスロット — クリック（PC）
   ghostSlot.querySelector(".card-inner").addEventListener("click", () => {
+    if (modalInteractionBlock || document.getElementById('modal-3d').classList.contains('open')) return;
     if (didDrag || touchHandled || !revealDone) return;
     if (current === SPECIAL_IDX) doFlip(SPECIAL_IDX);
   });
@@ -858,6 +861,7 @@ function init() {
     carousel.style.transform = `translateX(${liveOffset}px)`;
   }, { passive: true });
   carousel.addEventListener("touchend", e => {
+    if (modalInteractionBlock || document.getElementById('modal-3d').classList.contains('open')) return;
     const endX = e.changedTouches[0].clientX;
     const dt = Date.now() - ttime;
     // タップ判定：移動なし & 短時間
@@ -1077,6 +1081,8 @@ function closeModal3d() {
   if (modalAnimId) { cancelAnimationFrame(modalAnimId); modalAnimId = null; }
   if (modalRenderer) { modalRenderer.dispose(); modalRenderer = null; }
   modalControls = null;
+  modalInteractionBlock = true;
+  setTimeout(() => { modalInteractionBlock = false; }, 350);
 }
 
 // ─── Mode Switching ───────────────────────────────────────────
