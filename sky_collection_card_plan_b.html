@@ -874,6 +874,7 @@ function init() {
   let sx = 0, stime = 0, drag = false, baseOff = 0;
   document.addEventListener("mousedown", e => {
     if (isUIElement(e.target)) return;
+    if (document.getElementById('modal-3d').classList.contains('open')) return;
     cancelInertia();
     drag = true; didDrag = false;
     sx = e.clientX; stime = Date.now();
@@ -896,6 +897,7 @@ function init() {
   let tx = 0, ty = 0, ttime = 0, tbaseOff = 0;
   document.addEventListener("touchstart", e => {
     if (isUIElement(e.target)) return;
+    if (document.getElementById('modal-3d').classList.contains('open')) return;
     carouselDragPending = true;
     carouselDragActive = false;
     cancelInertia();
