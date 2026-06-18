@@ -226,10 +226,17 @@ window.dispatchEvent(new Event('three-ready'));
     padding: 16px 0 22px;
     position: relative;
     z-index: 5;
+    touch-action: none;
   }
 
   .dot { width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,0.14); cursor: pointer; transition: all 0.3s; }
   .dot.active { background: rgba(255,255,255,0.65); width: 15px; border-radius: 3px; }
+  @keyframes dot-pop {
+    0%   { transform: scale(1); }
+    45%  { transform: scale(1.6); }  /* 弾みの強さ（調整可） */
+    100% { transform: scale(1); }
+  }
+  .dot.pop { animation: dot-pop 120ms ease-out; }  /* 弾みの速さ（調整可） */
 
   .footer-line {
     position: relative;
@@ -507,6 +514,7 @@ let modalInteractionBlock = false;
 
 const carousel = document.getElementById("carousel");
 const navDots = document.getElementById("navDots");
+let pendingPop = false; // 次の buildDots で active ドットを弾ませる
 const infoName = document.getElementById("infoName");
 const infoDesc = document.getElementById("infoDesc");
 
@@ -561,14 +569,15 @@ function buildCard(p, idx) {
 
 function buildDots() {
   navDots.innerHTML = "";
-  if (current === SPECIAL_IDX && !revealDone) return; // reveal前はゴーストスロット時にdots非表示
+  if (current === SPECIAL_IDX && !revealDone) return; // reveal前はdots非表示
   const count = revealDone ? players.length + 1 : players.length;
   for (let i = 0; i < count; i++) {
     const d = document.createElement("div");
     d.className = "dot" + (i === current ? " active" : "");
-    d.addEventListener("click", () => navigateTo(i));
+    if (i === current && pendingPop) d.classList.add("pop");
     navDots.appendChild(d);
   }
+  pendingPop = false;
 }
 
 function getClass(i) {
@@ -592,7 +601,7 @@ let carouselDragActive = false;
 let carouselDragPending = false;
 
 function isUIElement(el) {
-  return !!el.closest('nav, .footer-line, button, select, a');
+  return !!el.closest('nav, .footer-line, button, select, a, .nav-dots');
 }
 let liveOffset = 0, rafId = null;
 
@@ -713,7 +722,60 @@ function render() {
   buildDots();
 }
 
-function navigateTo(idx) { current = idx; render(); }
+function navigateTo(idx) {
+  if (idx === current) return;       // 同じカードなら何もしない
+  pendingPop = true;                 // buildDots で弾ませる
+  if (navigator.vibrate) navigator.vibrate(10); // Android のみ反応・iOS は無視
+  current = idx;
+  render();
+}
+
+// ─── Nav-dots スクラブ（iPhone ホーム画面風） ───────────────
+let scrubbing = false;
+let scrubFirstC = 0, scrubLastC = 0, scrubCount = 0;
+
+function cacheScrubGeometry() {
+  const dots = navDots.querySelectorAll('.dot');
+  scrubCount = dots.length;
+  if (scrubCount === 0) return;
+  const firstR = dots[0].getBoundingClientRect();
+  const lastR  = dots[scrubCount - 1].getBoundingClientRect();
+  scrubFirstC = firstR.left + firstR.width / 2;
+  scrubLastC  = lastR.left + lastR.width / 2;
+}
+
+function scrubIndexFromX(clientX) {
+  if (scrubCount <= 1) return 0;
+  const span = scrubLastC - scrubFirstC;
+  const ratio = span === 0 ? 0 : (clientX - scrubFirstC) / span;
+  const idx = Math.round(ratio * (scrubCount - 1));
+  return Math.max(0, Math.min(scrubCount - 1, idx));
+}
+
+navDots.addEventListener('pointerdown', e => {
+  if (current === SPECIAL_IDX && !revealDone) return; // reveal前はドット無し
+  if (!navDots.querySelector('.dot')) return;
+  e.preventDefault();
+  e.stopPropagation();
+  scrubbing = true;
+  navDots.setPointerCapture(e.pointerId);
+  cacheScrubGeometry();
+  navigateTo(scrubIndexFromX(e.clientX));
+});
+
+navDots.addEventListener('pointermove', e => {
+  if (!scrubbing) return;
+  e.preventDefault();
+  navigateTo(scrubIndexFromX(e.clientX));
+});
+
+function endScrub(e) {
+  if (!scrubbing) return;
+  scrubbing = false;
+  try { navDots.releasePointerCapture(e.pointerId); } catch (_) {}
+}
+navDots.addEventListener('pointerup', endScrub);
+navDots.addEventListener('pointercancel', endScrub);
 
 function triggerReveal() {
   if (revealing || revealDone) return;
