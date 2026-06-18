@@ -344,24 +344,23 @@ body.viewmode-plan-a .card-face:not(.card-back) .card-front-img {
 .card-slot { position: relative; }
 .btn-3d {
   position: absolute;
-  top: -26px;
-  right: 0;
+  top: 6px;
+  right: 4px;
   z-index: 20;
-  background: transparent;
-  border: none;
-  border-bottom: 0.5px solid rgba(255,255,255,0.25);
-  border-radius: 0;
-  padding: 2px 2px 3px;
+  background: rgba(0,0,0,0.45);
+  backdrop-filter: blur(6px);
+  border: 0.5px solid rgba(255,255,255,0.22);
+  border-radius: 4px;
+  padding: 3px 8px;
   font-size: 9px;
-  color: rgba(255,255,255,0.45);
-  letter-spacing: 0.1em;
+  color: rgba(255,255,255,0.7);
+  letter-spacing: 0.08em;
   cursor: pointer;
   display: none;
-  transition: color 0.2s, border-color 0.2s;
+  transition: background 0.2s, color 0.2s;
   font-family: inherit;
-  white-space: nowrap;
 }
-.btn-3d:hover { color: rgba(255,255,255,0.85); border-bottom-color: rgba(255,255,255,0.6); }
+.btn-3d:hover { background: rgba(0,0,0,0.65); color: rgba(255,255,255,0.95); }
 
 /* ─── Plan B: modal ──────────────────────────────────── */
 #modal-3d {
@@ -375,44 +374,11 @@ body.viewmode-plan-a .card-face:not(.card-back) .card-front-img {
   justify-content: center;
 }
 #modal-3d.open { display: flex; }
-#modal-3d-wrap {
-  position: relative;
-  width: var(--card-w);
-  height: var(--card-h);
-  border-radius: 11px;
-  overflow: hidden;
-  border: 0.5px solid rgba(255,255,255,0.12);
-}
-#modal-3d-bg {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: none;
-}
 #modal-3d-canvas {
-  position: relative;
-  width: 100%;
-  height: 100%;
+  width: min(80vw, 80vh, 500px);
+  height: min(80vw, 80vh, 500px);
+  border-radius: 14px;
   display: block;
-}
-#modal-3d-reset {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  z-index: 5;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  border: none;
-  background: rgba(255,255,255,0.22);
-  color: rgba(255,255,255,0.6);
-  font-size: 12px;
-  cursor: pointer;
-  line-height: 1;
-  padding: 0;
-  display: none;
 }
 .modal-3d-name {
   margin-top: 18px;
@@ -436,14 +402,6 @@ body.viewmode-plan-a .card-face:not(.card-back) .card-front-img {
   font-family: inherit;
 }
 .modal-3d-close:hover { color: rgba(255,255,255,0.7); }
-@keyframes planAResetAppear {
-  from { opacity: 0; transform: scale(0.9); }
-  to   { opacity: 1; transform: scale(1); }
-}
-.planA-reset-show {
-  animation: planAResetAppear 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  pointer-events: auto !important;
-}
 </style>
 
 <div class="site-frame">
@@ -496,11 +454,7 @@ body.viewmode-plan-a .card-face:not(.card-back) .card-front-img {
   <div class="footer-line">sky airrace collection card project</div>
   <div id="modal-3d">
     <button class="modal-3d-close" id="modal3dClose">✕</button>
-    <div id="modal-3d-wrap">
-      <img id="modal-3d-bg" src="" alt="">
-      <canvas id="modal-3d-canvas"></canvas>
-      <button id="modal-3d-reset">↺</button>
-    </div>
+    <canvas id="modal-3d-canvas"></canvas>
     <p class="modal-3d-name" id="modal3dName"></p>
   </div>
 </div>
@@ -509,9 +463,9 @@ body.viewmode-plan-a .card-face:not(.card-back) .card-front-img {
 <button class="bgm-btn" id="bgmBtn">♪ MUTE</button>
 
 <select id="viewModeSel">
-  <option value="image">現在（画像）</option>
+  <option value="image" selected>現在（画像）</option>
   <option value="plan-a">案A（3Dに置換）</option>
-  <option value="plan-b" selected>案B（ボタンで3D）</option>
+  <option value="plan-b">案B（ボタンで3D）</option>
 </select>
 
 <script>
@@ -525,11 +479,6 @@ const players = [
   { num:"07", name:"Sample 07", desc:"Sample text goes here for this card", emoji:"🌟", frontImg:"images/image7.jpg", modelSrc:"3d/3d_andi.glb" },
 ];
 
-const CARD_BG_IMAGES = [
-  'images/image_background.jpg',
-  'images/image_background_dark1.png',
-];
-
 const GRADIENTS = [
   ["#1b3060","#0a1020"],["#1e2455","#0c1030"],["#0f2840","#061520"],
   ["#1f1845","#0c0a25"],["#0d2e38","#061822"],["#1c1050","#0a0820"],["#1a3035","#0a1820"],
@@ -541,7 +490,6 @@ let revealing  = false;             // reveal アニメーション実行中フ�
 let revealDone = false;             // reveal 完了フラグ
 const flipped = new Set();
 let viewMode = 'image'; // 'image' | 'plan-a' | 'plan-b'
-let modalInteractionBlock = false;
 
 const carousel = document.getElementById("carousel");
 const navDots = document.getElementById("navDots");
@@ -569,7 +517,7 @@ function buildCard(p, idx) {
   const [c1, c2] = GRADIENTS[idx % GRADIENTS.length];
 
   slot.innerHTML = `
-    <button class="btn-3d" data-idx="${idx}">3D で見る ›</button>
+    <button class="btn-3d" data-idx="${idx}">3D ▶</button>
     <div class="card-inner" id="ci-${idx}">
       <div class="card-face">
         <img src="${p.frontImg}" class="card-front-img" alt="${p.name}" draggable="false">
@@ -582,7 +530,6 @@ function buildCard(p, idx) {
     </div>`;
 
   slot.querySelector(".card-inner").addEventListener("click", () => {
-    if (modalInteractionBlock || document.getElementById('modal-3d').classList.contains('open')) return;
     if (didDrag || didTouchDrag || touchHandled) return;
     if (!slot.classList.contains("center")) {
       navigateTo(idx);
@@ -863,7 +810,6 @@ function init() {
 
   // ゴーストスロット — クリック（PC）
   ghostSlot.querySelector(".card-inner").addEventListener("click", () => {
-    if (modalInteractionBlock || document.getElementById('modal-3d').classList.contains('open')) return;
     if (didDrag || touchHandled || !revealDone) return;
     if (current === SPECIAL_IDX) doFlip(SPECIAL_IDX);
   });
@@ -875,7 +821,6 @@ function init() {
   let sx = 0, stime = 0, drag = false, baseOff = 0;
   document.addEventListener("mousedown", e => {
     if (isUIElement(e.target)) return;
-    if (document.getElementById('modal-3d').classList.contains('open')) return;
     cancelInertia();
     drag = true; didDrag = false;
     sx = e.clientX; stime = Date.now();
@@ -898,7 +843,6 @@ function init() {
   let tx = 0, ty = 0, ttime = 0, tbaseOff = 0;
   document.addEventListener("touchstart", e => {
     if (isUIElement(e.target)) return;
-    if (document.getElementById('modal-3d').classList.contains('open')) return;
     carouselDragPending = true;
     carouselDragActive = false;
     cancelInertia();
@@ -918,7 +862,7 @@ function init() {
       if (dx >= dy) carouselDragActive = true;
     }
     if (!carouselDragActive) return;
-    e.preventDefault();
+    e.preventDefault(); // 横ロック確定 → 縦スクロールを止める
     if (dx > 8) didTouchDrag = true;
     liveOffset = tbaseOff + cx - tx;
     carousel.style.transform = `translateX(${liveOffset}px)`;
@@ -929,8 +873,6 @@ function init() {
     carouselDragPending = false;
     carouselDragActive = false;
     if (!wasActive && !wasPending) return;
-    if (modalInteractionBlock || document.getElementById('modal-3d').classList.contains('open')) return;
-    if (e.target.closest('.btn-3d')) return;
     const endX = e.changedTouches[0].clientX;
     const dt = Date.now() - ttime;
     // タップ判定：移動なし & 短時間
@@ -1089,18 +1031,11 @@ function planA_onCardChange() { /* all cards always rendered */ }
 
 // ─── Plan B ──────────────────────────────────────────────────
 let modalRenderer = null, modalControls = null, modalAnimId = null;
-let modal_camDist = 0, modal_hasMoved = false, modal_resetTimer = null;
 
 async function openModal3d(idx) {
   closeModal3d();
   const p = (idx >= 0 && idx < players.length) ? players[idx] : { name: '&You', modelSrc: '3d/3d_andi.glb' };
   document.getElementById('modal3dName').textContent = p.name;
-
-  // 背景画像（sample1・2のみ）
-  const bgImg = document.getElementById('modal-3d-bg');
-  const bgSrc = CARD_BG_IMAGES[idx];
-  if (bgSrc) { bgImg.src = bgSrc; bgImg.style.display = 'block'; }
-  else { bgImg.style.display = 'none'; }
 
   const modal = document.getElementById('modal-3d');
   modal.classList.add('open');
@@ -1129,31 +1064,7 @@ async function openModal3d(idx) {
   modalControls = new OrbitControls(camera, canvas);
   modalControls.enableDamping = true;
   modalControls.dampingFactor = 0.06;
-  modalControls.enablePan = true;
-
-  // リセットボタン
-  const resetBtn = document.getElementById('modal-3d-reset');
-  modal_hasMoved = false;
-  modal_resetTimer = null;
-  modalControls.addEventListener('start', () => {
-    if (modal_hasMoved) return;
-    modal_hasMoved = true;
-    modal_resetTimer = setTimeout(() => {
-      resetBtn.style.display = 'block';
-      resetBtn.classList.remove('planA-reset-show');
-      void resetBtn.offsetWidth;
-      resetBtn.classList.add('planA-reset-show');
-    }, 500);
-  });
-  resetBtn.onclick = () => {
-    camera.position.set(0, 0, modal_camDist);
-    camera.quaternion.set(0, 0, 0, 1);
-    if (modalControls) { modalControls.target.set(0, 0, 0); modalControls.update(); }
-    modal_hasMoved = false;
-    clearTimeout(modal_resetTimer);
-    resetBtn.style.display = 'none';
-    resetBtn.classList.remove('planA-reset-show');
-  };
+  modalControls.enablePan = false;
 
   const loader = new GLTFLoader();
   loader.load(p.modelSrc, gltf => {
@@ -1164,7 +1075,6 @@ async function openModal3d(idx) {
     const maxDim = Math.max(size.x, size.y, size.z);
     gltf.scene.position.sub(center);
     camera.position.set(0, 0, maxDim * 1.5);
-    modal_camDist = maxDim * 1.5;
     modalControls.update();
     scene.add(gltf.scene);
   });
@@ -1182,12 +1092,6 @@ function closeModal3d() {
   if (modalAnimId) { cancelAnimationFrame(modalAnimId); modalAnimId = null; }
   if (modalRenderer) { modalRenderer.dispose(); modalRenderer = null; }
   modalControls = null;
-  const resetBtn = document.getElementById('modal-3d-reset');
-  if (resetBtn) { resetBtn.style.display = 'none'; resetBtn.classList.remove('planA-reset-show'); }
-  clearTimeout(modal_resetTimer);
-  modal_hasMoved = false;
-  modalInteractionBlock = true;
-  setTimeout(() => { modalInteractionBlock = false; }, 350);
 }
 
 // ─── Mode Switching ───────────────────────────────────────────
@@ -1235,6 +1139,4 @@ document.getElementById('modal3dClose').addEventListener('click', closeModal3d);
 document.getElementById('modal-3d').addEventListener('click', e => {
   if (e.target === document.getElementById('modal-3d')) closeModal3d();
 });
-
-setViewMode('plan-b');
 </script>
