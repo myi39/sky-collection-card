@@ -310,19 +310,6 @@ window.dispatchEvent(new Event('three-ready'));
 }
 
 
-/* ─── Plan A: canvas overlay ─────────────────────────── */
-#canvas-plan-a {
-  position: fixed;
-  top: 0; left: 0;
-  width: 100vw; height: 100vh;
-  z-index: 15;
-  display: none;
-  pointer-events: none;
-}
-body.viewmode-plan-a .card-face:not(.card-back) .card-front-img {
-  visibility: hidden;
-}
-
 /* ─── Plan B: 3D button above card slot ──────────────── */
 .card-slot { position: relative; }
 .btn-3d {
@@ -437,7 +424,6 @@ body.viewmode-plan-a .card-face:not(.card-back) .card-front-img {
   </nav>
 
   <div class="carousel-wrap">
-    <canvas id="canvas-plan-a"></canvas>
     <div id="special-card-overlay"
          style="display:none; position:absolute; top:0; left:0; right:0; bottom:0;
                 z-index:20; pointer-events:none;
@@ -517,7 +503,6 @@ const SPECIAL_IDX = players.length; // = 7  ゴーストスロットのインデ
 let revealing  = false;             // reveal アニメーション実行中フラグ
 let revealDone = false;             // reveal 完了フラグ
 const flipped = new Set();
-let viewMode = 'image'; // 'image' | 'plan-a' | 'plan-b'
 let modalInteractionBlock = false;
 
 const carousel = document.getElementById("carousel");
@@ -726,7 +711,6 @@ function render() {
     infoDesc.textContent = "";
   }
   buildDots();
-  if (typeof planA_onCardChange === 'function') planA_onCardChange(); // Plan A hook
 }
 
 function navigateTo(idx) { current = idx; render(); }
@@ -987,83 +971,6 @@ async function loadThree() {
   });
 }
 
-// ─── Plan A ──────────────────────────────────────────────────
-// ─── Plan A (carousel viewport renderer) ─────────────────────
-let planARenderer = null, planAAnimId = null;
-let planAScenes = [], planACameras = [], planAModels = [];
-
-function planA_animate() {
-  planAAnimId = requestAnimationFrame(planA_animate);
-  if (!planARenderer) return;
-  const wh = window.innerHeight;
-  const slots = carousel.querySelectorAll('.card-slot');
-  planARenderer.clear();
-  slots.forEach((slot, i) => {
-    if (i >= planAScenes.length) return;
-    const model = planAModels[i];
-    if (!model) return;
-    const face = slot.querySelector('.card-face:not(.card-back)');
-    if (!face) return;
-    const rect = face.getBoundingClientRect();
-    if (rect.bottom < 0 || rect.top > wh || rect.width <= 0) return;
-    model.rotation.y += 0.008;
-    const bottom = wh - rect.bottom;
-    planARenderer.setScissorTest(true);
-    planARenderer.setScissor(rect.left, bottom, rect.width, rect.height);
-    planARenderer.setViewport(rect.left, bottom, rect.width, rect.height);
-    planACameras[i].aspect = rect.width / rect.height;
-    planACameras[i].updateProjectionMatrix();
-    planARenderer.render(planAScenes[i], planACameras[i]);
-  });
-  planARenderer.setScissorTest(false);
-}
-
-async function planA_init() {
-  const { THREE, GLTFLoader } = await loadThree();
-  const canvas = document.getElementById('canvas-plan-a');
-
-  planARenderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-  planARenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  planARenderer.setSize(window.innerWidth, window.innerHeight);
-  planARenderer.setClearColor(0x000000, 0);
-  planARenderer.autoClear = false;
-
-  planAScenes = players.map(() => {
-    const scene = new THREE.Scene();
-    scene.add(new THREE.AmbientLight(0xffffff, 1.2));
-    const dir = new THREE.DirectionalLight(0xffffff, 1.8);
-    dir.position.set(3, 5, 4);
-    scene.add(dir);
-    return scene;
-  });
-  planACameras = players.map(() => new THREE.PerspectiveCamera(45, 1, 0.01, 1000));
-  planAModels = new Array(players.length).fill(null);
-
-  const loader = new GLTFLoader();
-  players.forEach((p, i) => {
-    loader.load(p.modelSrc, gltf => {
-      gltf.scene.rotation.x = Math.PI / 2;
-      const box = new THREE.Box3().setFromObject(gltf.scene);
-      const center = box.getCenter(new THREE.Vector3());
-      const size = box.getSize(new THREE.Vector3());
-      const maxDim = Math.max(size.x, size.y, size.z);
-      gltf.scene.position.sub(center);
-      planACameras[i].position.set(0, 0, maxDim * 1.5);
-      planAModels[i] = gltf.scene;
-      planAScenes[i].add(gltf.scene);
-    });
-  });
-
-  planA_animate();
-
-  window.addEventListener('resize', () => {
-    if (viewMode !== 'plan-a' || !planARenderer) return;
-    planARenderer.setSize(window.innerWidth, window.innerHeight);
-  });
-}
-
-function planA_onCardChange() { /* all cards always rendered */ }
-
 // ─── Plan B ──────────────────────────────────────────────────
 let modalRenderer = null, modalControls = null, modalAnimId = null;
 let modal_camDist = 0, modal_hasMoved = false, modal_resetTimer = null;
@@ -1167,31 +1074,11 @@ function closeModal3d() {
   setTimeout(() => { modalInteractionBlock = false; }, 350);
 }
 
-// ─── Mode Switching ───────────────────────────────────────────
-function setViewMode(mode) {
-  viewMode = mode;
-
-  document.body.classList.toggle('viewmode-plan-a', mode === 'plan-a');
-
-  const canvasA = document.getElementById('canvas-plan-a');
-
-  if (mode === 'plan-a') {
-    canvasA.style.display = 'block';
-    if (!planARenderer) {
-      planA_init();
-    } else if (!planAAnimId) {
-      planA_animate();
-    }
-  } else {
-    canvasA.style.display = 'none';
-    if (planAAnimId) { cancelAnimationFrame(planAAnimId); planAAnimId = null; }
-  }
-
+// ─── Init (plan-b only) ───────────────────────────────────────
+function showCardButtons() {
   document.querySelectorAll('.btn-3d').forEach(btn => {
-    btn.style.display = mode === 'plan-b' ? 'block' : 'none';
+    btn.style.display = 'block';
   });
-
-  if (mode !== 'plan-b') closeModal3d();
 }
 
 // Modal close button and backdrop click
@@ -1200,5 +1087,5 @@ document.getElementById('modal-3d').addEventListener('click', e => {
   if (e.target === document.getElementById('modal-3d')) closeModal3d();
 });
 
-setViewMode('plan-b');
+showCardButtons();
 </script>
