@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>3D Test</title>
+<title>3D 向きテスト</title>
 <script type="importmap">
 {
   "imports": {
@@ -14,22 +14,50 @@
 </script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: #111; color: #eee; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; }
+  body { background: #111; color: #eee; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 12px; padding: 16px; }
   canvas { border-radius: 8px; }
-  #status { margin-top: 12px; font-size: 13px; color: #aaa; }
+  #angle { font-size: 22px; font-weight: bold; letter-spacing: 1px; }
+  #status { font-size: 13px; color: #aaa; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; align-items: center; }
+  button { background: #2a2a40; color: #eee; border: 1px solid #444; border-radius: 6px; padding: 8px 14px; font-size: 14px; cursor: pointer; }
+  button:hover { background: #3a3a55; }
+  select { background: #2a2a40; color: #eee; border: 1px solid #444; border-radius: 6px; padding: 7px 10px; font-size: 14px; }
+  .hint { font-size: 12px; color: #888; max-width: 500px; text-align: center; }
 </style>
 </head>
 <body>
 <canvas id="c" width="500" height="500"></canvas>
+<div id="angle">x=90° y=0° z=0°</div>
+<div class="row">
+  <button id="rx">X +90°</button>
+  <button id="ry">Y +90°</button>
+  <button id="rz">Z +90°</button>
+  <button id="reset">角度リセット</button>
+  <button id="cam">カメラ正面に戻す</button>
+</div>
+<div class="row">
+  <label>モデル:</label>
+  <select id="model"></select>
+</div>
 <div id="status">読み込み中...</div>
+<p class="hint">表が正面・正しい向きに見える角度を探してください。ドラッグで見回し、「カメラ正面に戻す」で本番の初期ビューを確認できます。上の角度表示をそのまま伝えてください。</p>
 
 <script type="module">
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-const status = document.getElementById('status');
+const status = document.getElementById('c') && document.getElementById('status');
+const angleEl = document.getElementById('angle');
 const canvas = document.getElementById('c');
+
+// ファイル名は mac 由来 NFD 形なので NFD 正規化してから読み込む
+const MODELS = [
+  '3d/11_piano.glb',
+  '3d/02_P.glb',
+  '3d/01_モブ.glb',
+  '3d/18_社長.glb',
+].map(s => s.normalize('NFD'));
 
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.setPixelRatio(window.devicePixelRatio);
@@ -38,7 +66,8 @@ renderer.setClearColor(0x1a1a2e);
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 1000);
-camera.position.set(0, 0, 5);
+const CAM_DIST_DEFAULT = 5;
+camera.position.set(0, 0, CAM_DIST_DEFAULT);
 
 scene.add(new THREE.AmbientLight(0xffffff, 1.5));
 const dir = new THREE.DirectionalLight(0xffffff, 2);
@@ -50,31 +79,81 @@ controls.enableDamping = true;
 controls.dampingFactor = 0.06;
 
 const loader = new GLTFLoader();
-loader.load(
-  '3d/3d_sample_special.glb',
-  gltf => {
-    gltf.scene.rotation.x = Math.PI / 2;
-    const box = new THREE.Box3().setFromObject(gltf.scene);
-    const center = box.getCenter(new THREE.Vector3());
-    const size = box.getSize(new THREE.Vector3());
-    const maxDim = Math.max(size.x, size.y, size.z);
-    gltf.scene.position.sub(center);
-    camera.position.set(0, 0, maxDim * 2.2);
-    controls.update();
-    scene.add(gltf.scene);
-    status.textContent = '読み込み成功！ドラッグで回転、ホイールでズーム';
-    status.style.color = '#6fcf97';
-  },
-  xhr => {
-    const pct = xhr.total ? Math.round(xhr.loaded / xhr.total * 100) : '?';
-    status.textContent = `読み込み中... ${pct}%`;
-  },
-  err => {
-    status.textContent = `エラー: ${err.message}`;
-    status.style.color = '#eb5757';
-    console.error(err);
-  }
-);
+
+// 90°刻みの回転ステップ（本番と同じく gltf.scene に適用）
+let rot = { x: 1, y: 0, z: 0 }; // 単位: 90°。初期は本番と同じ x=90°
+let current = null;             // 現在のモデル scene
+let camDist = CAM_DIST_DEFAULT;
+
+function updateAngleLabel() {
+  angleEl.textContent = `x=${rot.x * 90 % 360}° y=${rot.y * 90 % 360}° z=${rot.z * 90 % 360}°`;
+}
+
+function applyRotation() {
+  if (!current) return;
+  // 回転を適用 → バウンディングボックスで再センタリング（本番と同じ計算順）
+  current.rotation.set(rot.x * Math.PI / 2, rot.y * Math.PI / 2, rot.z * Math.PI / 2);
+  const box = new THREE.Box3().setFromObject(current);
+  const center = box.getCenter(new THREE.Vector3());
+  const size = box.getSize(new THREE.Vector3());
+  const maxDim = Math.max(size.x, size.y, size.z);
+  current.position.set(0, 0, 0);
+  current.position.sub(center);
+  camDist = maxDim * 2.2;
+  updateAngleLabel();
+}
+
+function resetCamera() {
+  camera.position.set(0, 0, camDist);
+  camera.quaternion.set(0, 0, 0, 1);
+  controls.target.set(0, 0, 0);
+  controls.update();
+}
+
+function loadModel(src) {
+  if (current) { scene.remove(current); current = null; }
+  status.textContent = '読み込み中...';
+  status.style.color = '#aaa';
+  loader.load(
+    src,
+    gltf => {
+      current = gltf.scene;
+      applyRotation();
+      scene.add(current);
+      resetCamera();
+      status.textContent = '読み込み成功！ドラッグで回転、ホイールでズーム';
+      status.style.color = '#6fcf97';
+    },
+    xhr => {
+      const pct = xhr.total ? Math.round(xhr.loaded / xhr.total * 100) : '?';
+      status.textContent = `読み込み中... ${pct}%`;
+    },
+    err => {
+      status.textContent = `エラー: ${err.message}`;
+      status.style.color = '#eb5757';
+      console.error(err);
+    }
+  );
+}
+
+// ── UI ──
+document.getElementById('rx').onclick = () => { rot.x = (rot.x + 1) % 4; applyRotation(); resetCamera(); };
+document.getElementById('ry').onclick = () => { rot.y = (rot.y + 1) % 4; applyRotation(); resetCamera(); };
+document.getElementById('rz').onclick = () => { rot.z = (rot.z + 1) % 4; applyRotation(); resetCamera(); };
+document.getElementById('reset').onclick = () => { rot = { x: 1, y: 0, z: 0 }; applyRotation(); resetCamera(); };
+document.getElementById('cam').onclick = resetCamera;
+
+const sel = document.getElementById('model');
+MODELS.forEach((m, i) => {
+  const opt = document.createElement('option');
+  opt.value = m;
+  opt.textContent = m.replace('3d/', '');
+  sel.appendChild(opt);
+});
+sel.onchange = () => loadModel(sel.value);
+
+updateAngleLabel();
+loadModel(MODELS[0]);
 
 (function animate() {
   requestAnimationFrame(animate);

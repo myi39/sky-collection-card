@@ -1230,7 +1230,7 @@ async function openModal3d(idx) {
 
   const loader = new GLTFLoader();
   loader.load(p.modelSrc, gltf => {
-    gltf.scene.rotation.x = Math.PI / 2;
+    // 新モデル（2026/06/21 差し替え）は正面を向いて出力されているため向き補正は不要
     const box = new THREE.Box3().setFromObject(gltf.scene);
     const center = box.getCenter(new THREE.Vector3());
     const size = box.getSize(new THREE.Vector3());
