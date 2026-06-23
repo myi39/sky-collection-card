@@ -569,7 +569,7 @@ function buildCard(p, idx) {
     <button class="btn-3d" data-idx="${idx}">3D で見る ›</button>
     <div class="card-inner" id="ci-${idx}">
       <div class="card-face">
-        <img data-src="${p.frontImg}" class="card-front-img" alt="${p.name}" draggable="false" decoding="async">
+        <img data-src="${p.frontImg}" data-hi-src="${p.frontImg.replace('card_front/','card_front_hi/')}" class="card-front-img" alt="${p.name}" draggable="false" decoding="async">
       </div>
       <div class="card-face card-back" style="padding:0">
         <img data-back-src="${p.backImg}" class="card-front-img" alt="${p.name}" draggable="false" decoding="async">
@@ -769,11 +769,28 @@ function applyCardVisibility() {
   }
 }
 
+// 高画質で描くのは常に中央1枚だけ。停止時のみ中央を高画質へ、他は480pxへ戻す。
+// （スクラブ/フリック中は重い高画質を読み込まない＝クラッシュ防止）
+function applyCenterHiRes() {
+  if (motionActive) return;
+  const slots = carousel.children;
+  for (let i = 0; i < slots.length; i++) {
+    const img = slots[i].querySelector('img[data-src]'); // 表imgのみ（裏は data-back-src）
+    if (!img) continue;
+    if (i === current && img.dataset.hiSrc) {
+      if (img.getAttribute('src') !== img.dataset.hiSrc) img.src = img.dataset.hiSrc;
+    } else {
+      if (img.getAttribute('src') !== img.dataset.src) img.src = img.dataset.src;
+    }
+  }
+}
+
 function render() {
   carousel.querySelectorAll(".card-slot").forEach((s, i) => {
     s.className = "card-slot " + getClass(i);
   });
   applyCardVisibility();
+  applyCenterHiRes();
   adjustTranslate();
 
   // ゴーストスロットのスケール/透明度
@@ -876,6 +893,7 @@ function endScrub(e) {
   if (scrubTargetIdx !== null) { navigateTo(scrubTargetIdx); scrubTargetIdx = null; }
   motionActive = false;             // 停止：ウィンドウ内の画像をまとめて読み込む
   loadNearImages();
+  applyCenterHiRes();               // 停止した中央カードを高画質化
   try { navDots.releasePointerCapture(e.pointerId); } catch (_) {}
 }
 navDots.addEventListener('pointerup', endScrub);
@@ -975,7 +993,7 @@ function init() {
        style="display:none;width:var(--card-w);height:var(--card-h);
               position:relative;transform-style:preserve-3d;border-radius:11px;cursor:pointer">
     <div class="card-face">
-      <img data-src="images/card_front/00_%26you表.jpg" class="card-front-img" alt="&You" draggable="false" decoding="async">
+      <img data-src="images/card_front/00_%26you表.jpg" data-hi-src="images/card_front_hi/00_%26you表.jpg" class="card-front-img" alt="&You" draggable="false" decoding="async">
     </div>
     <div class="card-face card-back" style="transform:rotateY(180deg);padding:0">
       <img data-back-src="images/card_back/00_%26You裏.png" class="card-front-img" alt="&You" draggable="false" decoding="async">
