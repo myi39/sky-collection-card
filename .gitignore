@@ -5,3 +5,6 @@ node_modules/
 
 # 表画像の元データ（ローカルバックアップ。表示用は _optimize_front.py で生成）
 images/card_front/raw/
+
+# 裏画像の元データ（ローカルバックアップ。トリミング版は _trim_back.py で生成）
+images/card_back/raw/

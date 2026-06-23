@@ -30,8 +30,12 @@ window.dispatchEvent(new Event('three-ready'));
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
-    --card-w: clamp(240px, 78vw, 340px);
-    --card-h: min(calc(var(--card-w) * 1.406), 56vh);
+    /* 表画像の比率に固定（1226:1750 → 縦/横 = 1.4274）。
+       高さ予算(56vh)は幅側に変換して効かせ、アスペクトを常に一定に保つ
+       （ビューポート高さ＝ブラウザ差で比率が変わるのを防ぐ）。 */
+    --card-ar: 1.4274;
+    --card-w: min(clamp(240px, 78vw, 340px), calc(56vh / 1.4274));
+    --card-h: calc(var(--card-w) * 1.4274);
   }
 
   html, body {
@@ -151,7 +155,12 @@ window.dispatchEvent(new Event('three-ready'));
     inset: 0;
     width: 100%;
     height: 100%;
+    object-fit: contain;        /* 表：全体表示（フルサイズ・切り取りなし） */
+  }
+  /* 裏：高さを基準に満たし、横は中央で見切れる（表と同じ枠サイズ） */
+  .card-back .card-front-img {
     object-fit: cover;
+    object-position: center;
   }
 
   .card-silhouette {
@@ -444,7 +453,7 @@ window.dispatchEvent(new Event('three-ready'));
           <div style="position:absolute;inset:0;border-radius:11px;overflow:hidden;
                       backface-visibility:hidden;border:0.5px solid rgba(255,255,255,0.12);">
             <img src="images/card_front/00_%26you表.jpg"
-                 style="width:100%;height:100%;object-fit:cover;display:block;"
+                 style="width:100%;height:100%;object-fit:contain;display:block;"
                  draggable="false">
           </div>
           <div style="position:absolute;inset:0;border-radius:11px;overflow:hidden;
