@@ -84,11 +84,13 @@ window.dispatchEvent(new Event('three-ready'));
   .carousel-wrap {
     position: relative;
     z-index: 5;
-    padding: 28px 0 16px;
+    padding: 0;
     overflow: hidden;
     flex: 1;
     display: flex;
+    flex-direction: column;
     align-items: center;
+    justify-content: center;
   }
 
   .carousel-track {
@@ -190,7 +192,7 @@ window.dispatchEvent(new Event('three-ready'));
     position: relative;
     z-index: 5;
     max-width: 380px;
-    margin: 24px auto 0;
+    margin: 14px auto 0;
     text-align: center;
     padding: 0 20px 10px;
     min-height: 80px;
@@ -252,9 +254,9 @@ window.dispatchEvent(new Event('three-ready'));
   @media (max-width: 480px) {
     .nav { padding: 14px 16px; }
 
-    .carousel-wrap { padding: 36px 0 12px; }
+    .carousel-wrap { padding: 0; }
 
-    .info-panel { margin: 16px auto 0; }
+    .info-panel { margin: 10px auto 0; }
     .info-name { font-size: 17px; }
     .info-desc { font-size: 12px; }
   }
@@ -441,34 +443,30 @@ window.dispatchEvent(new Event('three-ready'));
                     position:relative; transform-style:preserve-3d; transform:rotateY(0deg);">
           <div style="position:absolute;inset:0;border-radius:11px;overflow:hidden;
                       backface-visibility:hidden;border:0.5px solid rgba(255,255,255,0.12);">
-            <img src="images/image999.jpg"
+            <img src="images/card_front/00_%26you表.jpg"
                  style="width:100%;height:100%;object-fit:cover;display:block;"
                  draggable="false">
           </div>
           <div style="position:absolute;inset:0;border-radius:11px;overflow:hidden;
                       backface-visibility:hidden;transform:rotateY(180deg);
-                      background:linear-gradient(160deg,#141e38 0%,#0a1020 100%);
-                      border:0.5px solid rgba(255,255,255,0.1);
-                      display:flex;flex-direction:column;align-items:center;justify-content:center;
-                      padding:16px 12px;gap:6px;">
-            <div style="font-size:22px;margin-bottom:2px;">✦</div>
-            <div style="font-size:11px;font-weight:500;color:rgba(255,255,255,0.88);letter-spacing:0.04em;text-align:center;">&amp;You</div>
-            <div style="font-size:9px;color:rgba(255,255,255,0.38);letter-spacing:0.04em;text-align:center;line-height:1.6;">Sample text</div>
+                      border:0.5px solid rgba(255,255,255,0.1);">
+            <img src="images/card_back/00_%26You裏.png"
+                 style="width:100%;height:100%;object-fit:cover;display:block;"
+                 draggable="false">
           </div>
         </div>
       </div>
     </div>
     <div class="carousel-track" id="carousel"></div>
+
+    <div class="info-panel">
+      <p class="info-name" id="infoName"></p>
+      <p class="info-desc" id="infoDesc"></p>
+    </div>
+
+    <div class="nav-dots" id="navDots"></div>
   </div>
 
-  <p class="flip-hint">tap to flip</p>
-
-  <div class="info-panel">
-    <p class="info-name" id="infoName"></p>
-    <p class="info-desc" id="infoDesc"></p>
-  </div>
-
-  <div class="nav-dots" id="navDots"></div>
   <div class="footer-line">sky airrace collection card project</div>
   <div id="modal-3d">
     <button class="modal-3d-close" id="modal3dClose">✕</button>
@@ -486,19 +484,47 @@ window.dispatchEvent(new Event('three-ready'));
 
 <script>
 const players = [
-  { num:"01", name:"Sample 01", desc:"Sample text goes here for this card", emoji:"🌊", frontImg:"images/image1.jpg", modelSrc:"3d/3d_andi.glb" },
-  { num:"02", name:"Sample 02", desc:"Sample text goes here for this card", emoji:"⚡", frontImg:"images/image2.jpg", modelSrc:"3d/3d_andi.glb" },
-  { num:"03", name:"Sample 03", desc:"Sample text goes here for this card", emoji:"✨", frontImg:"images/image3.jpg", modelSrc:"3d/3d_andi.glb" },
-  { num:"04", name:"Sample 04", desc:"Sample text goes here for this card", emoji:"🌙", frontImg:"images/image4.jpg", modelSrc:"3d/3d_andi.glb" },
-  { num:"05", name:"Sample 05", desc:"Sample text goes here for this card", emoji:"☁️", frontImg:"images/image5.jpg", modelSrc:"3d/3d_andi.glb" },
-  { num:"06", name:"Sample 06", desc:"Sample text goes here for this card", emoji:"🌅", frontImg:"images/image6.jpg", modelSrc:"3d/3d_andi.glb" },
-  { num:"07", name:"Sample 07", desc:"Sample text goes here for this card", emoji:"🌟", frontImg:"images/image7.jpg", modelSrc:"3d/3d_andi.glb" },
+  { num:"01", name:"01", desc:"Sample text goes here for this card", frontImg:"images/card_front/01_モブ表.jpg",      backImg:"images/card_back/01_モブ裏.png",      modelSrc:"3d/01_モブ.glb" },
+  { num:"02", name:"02", desc:"Sample text goes here for this card", frontImg:"images/card_front/02_P表.jpg",         backImg:"images/card_back/02_P裏.png",         modelSrc:"3d/02_P.glb" },
+  { num:"03", name:"03", desc:"Sample text goes here for this card", frontImg:"images/card_front/03_オーワタ表.jpg",   backImg:"images/card_back/03_オーワタ裏.png",   modelSrc:"3d/03_オーワタ.glb" },
+  { num:"04", name:"04", desc:"Sample text goes here for this card", frontImg:"images/card_front/04_よしだもち表.jpg", backImg:"images/card_back/04_よしだもち裏.png", modelSrc:"3d/04_よしだもち.glb" },
+  { num:"05", name:"05", desc:"Sample text goes here for this card", frontImg:"images/card_front/05_でかお表.jpg",     backImg:"images/card_back/05_でかお裏.png",     modelSrc:"3d/05_でかお.glb" },
+  { num:"06", name:"06", desc:"Sample text goes here for this card", frontImg:"images/card_front/06_しょう太表.jpg",   backImg:"images/card_back/06_しょう太裏.png",   modelSrc:"3d/06_しょう太.glb" },
+  { num:"07", name:"07", desc:"Sample text goes here for this card", frontImg:"images/card_front/07_名取表.jpg",       backImg:"images/card_back/07_名取裏.png",       modelSrc:"3d/07_名取.glb" },
+  { num:"08", name:"08", desc:"Sample text goes here for this card", frontImg:"images/card_front/08_くに表.jpg",       backImg:"images/card_back/08_くに裏.png",       modelSrc:"3d/08_くに.glb" },
+  { num:"09", name:"09", desc:"Sample text goes here for this card", frontImg:"images/card_front/09_ゆき表.jpg",       backImg:"images/card_back/09_ゆき裏.png",       modelSrc:"3d/09_ゆき.glb" },
+  { num:"10", name:"10", desc:"Sample text goes here for this card", frontImg:"images/card_front/10_すー表.jpg",       backImg:"images/card_back/10_すー裏.png",       modelSrc:"3d/10_すーさん.glb" },
+  { num:"11", name:"11", desc:"Sample text goes here for this card", frontImg:"images/card_front/11_Piano表.jpg",      backImg:"images/card_back/11_Piano裏.png",      modelSrc:"3d/11_piano.glb" },
+  { num:"12", name:"12", desc:"Sample text goes here for this card", frontImg:"images/card_front/12_しか表.jpg",       backImg:"images/card_back/12_しか裏.png",       modelSrc:"3d/12_しか.glb" },
+  { num:"13", name:"13", desc:"Sample text goes here for this card", frontImg:"images/card_front/13_こちゃ表.jpg",     backImg:"images/card_back/13_こちゃ裏.png",     modelSrc:"3d/13_こちゃ.glb" },
+  { num:"14", name:"14", desc:"Sample text goes here for this card", frontImg:"images/card_front/14_トキウ表.jpg",     backImg:"images/card_back/14_トキウ裏.png",     modelSrc:"3d/14_トキウ.glb" },
+  { num:"15", name:"15", desc:"Sample text goes here for this card", frontImg:"images/card_front/15_みぃ表.jpg",       backImg:"images/card_back/15_みぃ裏.png",       modelSrc:"3d/15_みぃ.glb" },
+  { num:"16", name:"16", desc:"Sample text goes here for this card", frontImg:"images/card_front/16_ごま表.jpg",       backImg:"images/card_back/16_ごま裏.png",       modelSrc:"3d/16_ごまさん.glb" },
+  { num:"17", name:"17", desc:"Sample text goes here for this card", frontImg:"images/card_front/17_さくら表.jpg",     backImg:"images/card_back/17_さくら裏.png",     modelSrc:"3d/17_さくらさん.glb" },
+  { num:"18", name:"18", desc:"Sample text goes here for this card", frontImg:"images/card_front/18_社長表.jpg",       backImg:"images/card_back/18_社長裏.png",       modelSrc:"3d/18_社長.glb" },
+  { num:"19", name:"19", desc:"Sample text goes here for this card", frontImg:"images/card_front/19_もわ表.jpg",       backImg:"images/card_back/19_もわ裏.png",       modelSrc:"3d/19_もわ.glb" },
+  { num:"20", name:"20", desc:"Sample text goes here for this card", frontImg:"images/card_front/20_薪表.jpg",         backImg:"images/card_back/20_薪裏.png",         modelSrc:"3d/20_薪.glb" },
+  { num:"21", name:"21", desc:"Sample text goes here for this card", frontImg:"images/card_front/21_志麻表.jpg",       backImg:"images/card_back/21_志麻裏.png",       modelSrc:"3d/21_志麻.glb" },
+  { num:"22", name:"22", desc:"Sample text goes here for this card", frontImg:"images/card_front/22_K斗表.jpg",        backImg:"images/card_back/22_K斗裏.png",        modelSrc:"3d/22_K斗.glb" },
+  { num:"23", name:"23", desc:"Sample text goes here for this card", frontImg:"images/card_front/23_キャロット表.jpg", backImg:"images/card_back/23_キャロット裏.png", modelSrc:"3d/23_キャロット.glb" },
+  { num:"24", name:"24", desc:"Sample text goes here for this card", frontImg:"images/card_front/24_とらのこ表.jpg",   backImg:"images/card_back/24_とらのこ裏.png",   modelSrc:"3d/24_とらのこ.glb" },
+  { num:"25", name:"25", desc:"Sample text goes here for this card", frontImg:"images/card_front/25_ハル表.jpg",       backImg:"images/card_back/25_ハル裏.png",       modelSrc:"3d/25_ハル.glb" },
+  { num:"26", name:"26", desc:"Sample text goes here for this card", frontImg:"images/card_front/26_持田表.jpg",       backImg:"images/card_back/26_持田裏.png",       modelSrc:"3d/26_もちだ.glb" },
+  { num:"27", name:"27", desc:"Sample text goes here for this card", frontImg:"images/card_front/27_そら色表.jpg",     backImg:"images/card_back/27_そら色裏.png",     modelSrc:"3d/27_そら色.glb" },
+  { num:"28", name:"28", desc:"Sample text goes here for this card", frontImg:"images/card_front/28_てん表.jpg",       backImg:"images/card_back/28_てん裏.png",       modelSrc:"3d/28_てん.glb" },
+  { num:"29", name:"29", desc:"Sample text goes here for this card", frontImg:"images/card_front/29_ハチヤ表.jpg",     backImg:"images/card_back/29_ハチヤ裏.png",     modelSrc:"3d/29_ハチヤ.glb" },
 ];
 
-const CARD_BG_IMAGES = [
-  'images/image_background.jpg',
-  'images/image_background_dark1.png',
-];
+// 3D ビューの背景画像（全カード共通）
+const CARD_3D_BG = 'images/3d_background/light.jpg';
+
+// ファイル名は mac 由来の NFD(分解)形 Unicode で保存されているため、
+// 参照パスを NFD に正規化してファイル名と一致させる（濁点「ブ」=「フ+゛」等）
+players.forEach(p => {
+  p.frontImg = p.frontImg.normalize('NFD');
+  p.backImg  = p.backImg.normalize('NFD');
+  p.modelSrc = p.modelSrc.normalize('NFD');
+});
 
 const GRADIENTS = [
   ["#1b3060","#0a1020"],["#1e2455","#0c1030"],["#0f2840","#061520"],
@@ -511,6 +537,7 @@ let revealing  = false;             // reveal アニメーション実行中フ�
 let revealDone = false;             // reveal 完了フラグ
 const flipped = new Set();
 let modalInteractionBlock = false;
+let motionActive = false;   // スクラブ/フリック中 = true（この間は画像を読み込まない）
 
 const carousel = document.getElementById("carousel");
 const navDots = document.getElementById("navDots");
@@ -542,12 +569,10 @@ function buildCard(p, idx) {
     <button class="btn-3d" data-idx="${idx}">3D で見る ›</button>
     <div class="card-inner" id="ci-${idx}">
       <div class="card-face">
-        <img src="${p.frontImg}" class="card-front-img" alt="${p.name}" draggable="false">
+        <img data-src="${p.frontImg}" class="card-front-img" alt="${p.name}" draggable="false" decoding="async">
       </div>
-      <div class="card-face card-back" style="background:linear-gradient(160deg,#141e38 0%,#0a1020 100%)">
-        <div class="back-emoji">${p.emoji}</div>
-        <div class="back-name">${p.name}</div>
-        <div class="back-stat">${p.desc}</div>
+      <div class="card-face card-back" style="padding:0">
+        <img data-back-src="${p.backImg}" class="card-front-img" alt="${p.name}" draggable="false" decoding="async">
       </div>
     </div>`;
 
@@ -568,10 +593,21 @@ function buildCard(p, idx) {
 }
 
 function buildDots() {
+  const needed = (current === SPECIAL_IDX && !revealDone)
+    ? 0
+    : (revealDone ? players.length + 1 : players.length);
+
+  // 動作中で個数が変わらなければ、再生成せず active クラスだけ移す（DOM churn 回避）
+  if (motionActive && navDots.children.length === needed && needed > 0) {
+    for (let i = 0; i < needed; i++) {
+      navDots.children[i].classList.toggle("active", i === current);
+    }
+    return;
+  }
+
   navDots.innerHTML = "";
-  if (current === SPECIAL_IDX && !revealDone) return; // reveal前はdots非表示
-  const count = revealDone ? players.length + 1 : players.length;
-  for (let i = 0; i < count; i++) {
+  if (needed === 0) return; // reveal前はdots非表示
+  for (let i = 0; i < needed; i++) {
     const d = document.createElement("div");
     d.className = "dot" + (i === current ? " active" : "");
     if (i === current && pendingPop) d.classList.add("pop");
@@ -608,11 +644,16 @@ let liveOffset = 0, rafId = null;
 function doFlip(idx) {
   const ci = document.getElementById(`ci-${idx}`);
   if (!ci) return;
+  const backImg = ci.querySelector('.card-back img[data-back-src]');
   const d = cardDeg[idx] || 0;
   const toBack = !flipped.has(idx);
   const base = Math.floor(d / 360) * 360;
   let target;
   if (toBack) {
+    // 裏画像は重いのでフリップ時に読み込む（アニメ中にデコードが間に合う）
+    if (backImg && backImg.getAttribute('src') !== backImg.dataset.backSrc) {
+      backImg.src = backImg.dataset.backSrc;
+    }
     // 次の ≡180(mod360) の位置 + 2スピン
     target = (base + 180 > d ? base + 180 : base + 540) + 720;
     flipped.add(idx);
@@ -620,6 +661,8 @@ function doFlip(idx) {
     // 次の ≡0(mod360) の位置 + 2スピン
     target = base + 360 + 720;
     flipped.delete(idx);
+    // 表に戻したらメモリ節約のため裏画像を解放（アニメ完了後）
+    if (backImg) setTimeout(() => { if (!flipped.has(idx)) backImg.removeAttribute('src'); }, 900);
   }
   cardDeg[idx] = target;
   ci.style.transition = "transform 0.85s cubic-bezier(0.16, 1, 0.3, 1)";
@@ -644,6 +687,7 @@ function nearestCard(offset) {
 
 function cancelInertia() {
   if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+  motionActive = false;
 }
 
 function updateHighlight(offset) {
@@ -653,12 +697,14 @@ function updateHighlight(offset) {
     carousel.querySelectorAll(".card-slot").forEach((s, i) => {
       s.className = "card-slot " + getClass(i);
     });
+    applyCardVisibility();
     if (current === SPECIAL_IDX && !revealDone) triggerReveal();
   }
 }
 
 function startInertia(velPxPerMs) {
   cancelInertia();
+  motionActive = true;        // 慣性スクロール中：画像読み込みを止める
   carousel.style.transition = "none";
   let vel = velPxPerMs * 16; // px/ms → px/frame (60fps)
   let offset = liveOffset;
@@ -677,7 +723,9 @@ function startInertia(velPxPerMs) {
       const target = nearestCard(offset);
       current = target;
       carousel.style.transition = "transform 0.3s cubic-bezier(0.25, 0.1, 0.25, 1)";
+      motionActive = false;     // 停止：ウィンドウ内の画像をまとめて読み込む
       render();
+      loadNearImages();
       return;
     }
     rafId = requestAnimationFrame(frame);
@@ -685,10 +733,47 @@ function startInertia(velPxPerMs) {
   rafId = requestAnimationFrame(frame);
 }
 
+// 表画像は全カードを軽量解像度(480px)で常駐デコードする（仮想化なし）。
+// → スクラブ中のデコードが起きず、どこでも即表示になる。
+// 裏画像は重い(769px)ため、フリップ時のみ読み込む（doFlip 参照）。
+function loadAllFronts() {
+  const imgs = carousel.querySelectorAll('img[data-src]'); // 表画像のみ
+  let i = 0;
+  function step() {
+    const t0 = performance.now();
+    while (i < imgs.length && performance.now() - t0 < 6) { // 1フレーム最大6msだけ読む
+      const img = imgs[i++];
+      if (img.getAttribute('src') !== img.dataset.src) {
+        img.src = img.dataset.src;
+        if (img.decode) img.decode().catch(() => {}); // RAMへ先行デコード（visibility切替時に即描画）
+      }
+    }
+    if (i < imgs.length) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+// 表画像は常駐するので、移動時の画像管理は不要（呼び出し箇所互換のための空関数）
+function updateCardImages() {}
+function loadNearImages() {}
+
+// GPU合成の負荷を抑える — 画面に映る範囲(±VISIBLE_WINDOW)だけ描画し、
+// 遠いカードは visibility:hidden でGPUコンポジットから外す。
+// 画像のデコード済みデータはRAMに残るため、近づけば再デコードなしで即描画される。
+const VISIBLE_WINDOW = 2;
+function applyCardVisibility() {
+  const slots = carousel.children; // card-slot ×N + ghost-slot
+  for (let i = 0; i < slots.length; i++) {
+    slots[i].style.visibility =
+      (Math.abs(i - current) <= VISIBLE_WINDOW) ? "visible" : "hidden";
+  }
+}
+
 function render() {
   carousel.querySelectorAll(".card-slot").forEach((s, i) => {
     s.className = "card-slot " + getClass(i);
   });
+  applyCardVisibility();
   adjustTranslate();
 
   // ゴーストスロットのスケール/透明度
@@ -724,8 +809,10 @@ function render() {
 
 function navigateTo(idx) {
   if (idx === current) return;       // 同じカードなら何もしない
-  pendingPop = true;                 // buildDots で弾ませる
-  if (navigator.vibrate) navigator.vibrate(10); // Android のみ反応・iOS は無視
+  if (!motionActive) {               // タップ移動のときだけ弾み＋振動
+    pendingPop = true;
+    if (navigator.vibrate) navigator.vibrate(10); // Android のみ反応・iOS は無視
+  }
   current = idx;
   render();
 }
@@ -733,6 +820,16 @@ function navigateTo(idx) {
 // ─── Nav-dots スクラブ（iPhone ホーム画面風） ───────────────
 let scrubbing = false;
 let scrubFirstC = 0, scrubLastC = 0, scrubCount = 0;
+let scrubTargetIdx = null, scrubRaf = null;
+
+// pointermove の連打を 1フレーム1回に間引く（イベント頻度と実処理を分離）
+function scheduleScrub() {
+  if (scrubRaf !== null) return;
+  scrubRaf = requestAnimationFrame(() => {
+    scrubRaf = null;
+    if (scrubTargetIdx !== null) navigateTo(scrubTargetIdx);
+  });
+}
 
 function cacheScrubGeometry() {
   const dots = navDots.querySelectorAll('.dot');
@@ -758,20 +855,27 @@ navDots.addEventListener('pointerdown', e => {
   e.preventDefault();
   e.stopPropagation();
   scrubbing = true;
+  motionActive = true;              // 動作中：画像読み込みを止める
   navDots.setPointerCapture(e.pointerId);
   cacheScrubGeometry();
-  navigateTo(scrubIndexFromX(e.clientX));
+  scrubTargetIdx = scrubIndexFromX(e.clientX);
+  scheduleScrub();
 });
 
 navDots.addEventListener('pointermove', e => {
   if (!scrubbing) return;
   e.preventDefault();
-  navigateTo(scrubIndexFromX(e.clientX));
+  scrubTargetIdx = scrubIndexFromX(e.clientX);
+  scheduleScrub();
 });
 
 function endScrub(e) {
   if (!scrubbing) return;
   scrubbing = false;
+  if (scrubRaf !== null) { cancelAnimationFrame(scrubRaf); scrubRaf = null; }
+  if (scrubTargetIdx !== null) { navigateTo(scrubTargetIdx); scrubTargetIdx = null; }
+  motionActive = false;             // 停止：ウィンドウ内の画像をまとめて読み込む
+  loadNearImages();
   try { navDots.releasePointerCapture(e.pointerId); } catch (_) {}
 }
 navDots.addEventListener('pointerup', endScrub);
@@ -871,15 +975,10 @@ function init() {
        style="display:none;width:var(--card-w);height:var(--card-h);
               position:relative;transform-style:preserve-3d;border-radius:11px;cursor:pointer">
     <div class="card-face">
-      <img src="images/image999.jpg" class="card-front-img" alt="&You" draggable="false">
+      <img data-src="images/card_front/00_%26you表.jpg" class="card-front-img" alt="&You" draggable="false" decoding="async">
     </div>
-    <div class="card-face card-back"
-         style="background:linear-gradient(160deg,#141e38 0%,#0a1020 100%);transform:rotateY(180deg);
-                display:flex;flex-direction:column;align-items:center;justify-content:center;
-                padding:16px 12px;gap:6px">
-      <div class="back-emoji">✦</div>
-      <div class="back-name">&amp;You</div>
-      <div class="back-stat">Sample text</div>
+    <div class="card-face card-back" style="transform:rotateY(180deg);padding:0">
+      <img data-back-src="images/card_back/00_%26You裏.png" class="card-front-img" alt="&You" draggable="false" decoding="async">
     </div>
   </div>`;
   carousel.appendChild(ghostSlot);
@@ -986,6 +1085,7 @@ function init() {
 }
 
 init();
+loadAllFronts(); // 表画像を全カード分、軽量解像度で常駐読み込み（progressive）
 
 // BGM
 (function() {
@@ -1034,19 +1134,18 @@ async function loadThree() {
 }
 
 // ─── Plan B ──────────────────────────────────────────────────
-let modalRenderer = null, modalControls = null, modalAnimId = null;
+let modalRenderer = null, modalControls = null, modalAnimId = null, modalScene = null;
 let modal_camDist = 0, modal_hasMoved = false, modal_resetTimer = null;
 
 async function openModal3d(idx) {
   closeModal3d();
-  const p = (idx >= 0 && idx < players.length) ? players[idx] : { name: '&You', modelSrc: '3d/3d_andi.glb' };
+  const p = (idx >= 0 && idx < players.length) ? players[idx] : { name: '&You', modelSrc: '3d/00_%26you.glb' };
   document.getElementById('modal3dName').textContent = p.name;
 
-  // 背景画像（sample1・2のみ）
+  // 3D ビューの背景画像（全カード共通）
   const bgImg = document.getElementById('modal-3d-bg');
-  const bgSrc = CARD_BG_IMAGES[idx];
-  if (bgSrc) { bgImg.src = bgSrc; bgImg.style.display = 'block'; }
-  else { bgImg.style.display = 'none'; }
+  bgImg.src = CARD_3D_BG;
+  bgImg.style.display = 'block';
 
   const modal = document.getElementById('modal-3d');
   modal.classList.add('open');
@@ -1060,6 +1159,7 @@ async function openModal3d(idx) {
   const h = rect.height || 400;
 
   const scene = new THREE.Scene();
+  modalScene = scene;
   const camera = new THREE.PerspectiveCamera(45, w / h, 0.01, 1000);
 
   scene.add(new THREE.AmbientLight(0xffffff, 1.2));
@@ -1126,6 +1226,20 @@ async function openModal3d(idx) {
 function closeModal3d() {
   document.getElementById('modal-3d').classList.remove('open');
   if (modalAnimId) { cancelAnimationFrame(modalAnimId); modalAnimId = null; }
+  // ジオメトリ・テクスチャを破棄してGPUメモリを解放
+  if (modalScene) {
+    modalScene.traverse(o => {
+      if (o.geometry) o.geometry.dispose();
+      if (o.material) {
+        (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => {
+          for (const k in m) { const v = m[k]; if (v && v.isTexture) v.dispose(); }
+          m.dispose();
+        });
+      }
+    });
+    modalScene = null;
+  }
+  if (modalControls) { modalControls.dispose(); }
   if (modalRenderer) { modalRenderer.dispose(); modalRenderer = null; }
   modalControls = null;
   const resetBtn = document.getElementById('modal-3d-reset');

@@ -1,4 +1,7 @@
-.claude/
+node_modules/
+
+# Claude/superpowers のツール状態（プロジェクト成果物ではない）
 .superpowers/
-docs/
-3d_test.html
+
+# 表画像の元データ（ローカルバックアップ。表示用は _optimize_front.py で生成）
+images/card_front/raw/
