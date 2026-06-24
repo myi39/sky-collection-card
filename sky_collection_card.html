@@ -1231,6 +1231,19 @@ async function openModal3d(idx) {
   const loader = new GLTFLoader();
   loader.load(p.modelSrc, gltf => {
     // 新モデル（2026/06/21 差し替え）は正面を向いて出力されているため向き補正は不要
+    // ライティングを掛けず、カード画像と同じ明るさでテクスチャをそのまま貼る（陰影なし）
+    gltf.scene.traverse(o => {
+      if (!o.isMesh || !o.material) return;
+      const src = o.material;
+      o.material = new THREE.MeshBasicMaterial({
+        map: src.map || null,
+        color: src.map ? 0xffffff : (src.color ? src.color.clone() : 0xffffff),
+        transparent: src.transparent,
+        alphaTest: src.alphaTest,
+        side: src.side,
+        vertexColors: src.vertexColors,
+      });
+    });
     const box = new THREE.Box3().setFromObject(gltf.scene);
     const center = box.getCenter(new THREE.Vector3());
     const size = box.getSize(new THREE.Vector3());

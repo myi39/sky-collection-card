@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>3D 向きテスト</title>
+<title>3D 見た目比較テスト</title>
 <script type="importmap">
 {
   "imports": {
@@ -16,39 +16,40 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: #111; color: #eee; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 12px; padding: 16px; }
   canvas { border-radius: 8px; }
-  #angle { font-size: 22px; font-weight: bold; letter-spacing: 1px; }
+  #mode { font-size: 20px; font-weight: bold; }
   #status { font-size: 13px; color: #aaa; }
   .row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; align-items: center; }
   button { background: #2a2a40; color: #eee; border: 1px solid #444; border-radius: 6px; padding: 8px 14px; font-size: 14px; cursor: pointer; }
   button:hover { background: #3a3a55; }
+  button.active { background: #5a6cff; border-color: #5a6cff; }
   select { background: #2a2a40; color: #eee; border: 1px solid #444; border-radius: 6px; padding: 7px 10px; font-size: 14px; }
-  .hint { font-size: 12px; color: #888; max-width: 500px; text-align: center; }
+  .hint { font-size: 12px; color: #888; max-width: 520px; text-align: center; }
 </style>
 </head>
 <body>
 <canvas id="c" width="500" height="500"></canvas>
-<div id="angle">x=90° y=0° z=0°</div>
+<div id="mode">現状（陰影あり）</div>
 <div class="row">
-  <button id="rx">X +90°</button>
-  <button id="ry">Y +90°</button>
-  <button id="rz">Z +90°</button>
-  <button id="reset">角度リセット</button>
-  <button id="cam">カメラ正面に戻す</button>
+  <button id="m-now" class="active">現状（陰影あり）</button>
+  <button id="m-env">A: 環境マップ（陰影＋明るく）</button>
+  <button id="m-flat">D: 画像そのまま（陰影なし）</button>
 </div>
 <div class="row">
   <label>モデル:</label>
   <select id="model"></select>
+  <button id="cam">カメラ正面に戻す</button>
 </div>
 <div id="status">読み込み中...</div>
-<p class="hint">表が正面・正しい向きに見える角度を探してください。ドラッグで見回し、「カメラ正面に戻す」で本番の初期ビューを確認できます。上の角度表示をそのまま伝えてください。</p>
+<p class="hint">3つの描画モードを切り替えて見比べてください。ドラッグで回転、ホイールでズーム。「現状」は今の本番と同じ。「D」が"カード画像をそのまま貼る"案です。どれが良いか教えてください。</p>
 
 <script type="module">
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
-const status = document.getElementById('c') && document.getElementById('status');
-const angleEl = document.getElementById('angle');
+const status = document.getElementById('status');
+const modeLabel = document.getElementById('mode');
 const canvas = document.getElementById('c');
 
 // ファイル名は mac 由来 NFD 形なので NFD 正規化してから読み込む
@@ -69,38 +70,63 @@ const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 1000);
 const CAM_DIST_DEFAULT = 5;
 camera.position.set(0, 0, CAM_DIST_DEFAULT);
 
-scene.add(new THREE.AmbientLight(0xffffff, 1.5));
-const dir = new THREE.DirectionalLight(0xffffff, 2);
+// 本番と同じライト（現状・A モードで使用）
+const ambient = new THREE.AmbientLight(0xffffff, 1.2);
+const dir = new THREE.DirectionalLight(0xffffff, 1.8);
 dir.position.set(3, 5, 4);
-scene.add(dir);
+scene.add(ambient, dir);
+
+// 環境マップ（A モード用）
+const pmrem = new THREE.PMREMGenerator(renderer);
+const envTex = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
 
 const controls = new OrbitControls(camera, canvas);
 controls.enableDamping = true;
 controls.dampingFactor = 0.06;
 
 const loader = new GLTFLoader();
-
-// 90°刻みの回転ステップ（本番と同じく gltf.scene に適用）
-let rot = { x: 1, y: 0, z: 0 }; // 単位: 90°。初期は本番と同じ x=90°
-let current = null;             // 現在のモデル scene
+let current = null;     // 現在のモデル scene
 let camDist = CAM_DIST_DEFAULT;
+let mode = 'now';
 
-function updateAngleLabel() {
-  angleEl.textContent = `x=${rot.x * 90 % 360}° y=${rot.y * 90 % 360}° z=${rot.z * 90 % 360}°`;
+function setMode(m) {
+  mode = m;
+  ['now', 'env', 'flat'].forEach(k => {
+    document.getElementById('m-' + (k === 'now' ? 'now' : k)).classList.toggle('active', k === m);
+  });
+  modeLabel.textContent = m === 'now' ? '現状（陰影あり）' : m === 'env' ? 'A: 環境マップ' : 'D: 画像そのまま（陰影なし）';
+  applyMode();
 }
 
-function applyRotation() {
+function applyMode() {
   if (!current) return;
-  // 回転を適用 → バウンディングボックスで再センタリング（本番と同じ計算順）
-  current.rotation.set(rot.x * Math.PI / 2, rot.y * Math.PI / 2, rot.z * Math.PI / 2);
-  const box = new THREE.Box3().setFromObject(current);
-  const center = box.getCenter(new THREE.Vector3());
-  const size = box.getSize(new THREE.Vector3());
-  const maxDim = Math.max(size.x, size.y, size.z);
-  current.position.set(0, 0, 0);
-  current.position.sub(center);
-  camDist = maxDim * 2.2;
-  updateAngleLabel();
+  // 環境マップ: A のときだけ有効
+  scene.environment = (mode === 'env') ? envTex : null;
+  // ライト: D（陰影なし）のときは消す（Basic は無視するが見た目を明確化）
+  const litVisible = (mode !== 'flat');
+  ambient.visible = litVisible;
+  dir.visible = litVisible;
+
+  current.traverse(o => {
+    if (!o.isMesh || !o.userData.origMat) return;
+    if (mode === 'flat') {
+      // 元マテリアルのテクスチャをそのまま貼る陰影なしマテリアル
+      if (!o.userData.basicMat) {
+        const src = o.userData.origMat;
+        o.userData.basicMat = new THREE.MeshBasicMaterial({
+          map: src.map || null,
+          color: src.map ? 0xffffff : (src.color ? src.color.clone() : 0xffffff),
+          transparent: src.transparent,
+          alphaTest: src.alphaTest,
+          side: src.side,
+          vertexColors: src.vertexColors,
+        });
+      }
+      o.material = o.userData.basicMat;
+    } else {
+      o.material = o.userData.origMat;
+    }
+  });
 }
 
 function resetCamera() {
@@ -118,8 +144,17 @@ function loadModel(src) {
     src,
     gltf => {
       current = gltf.scene;
-      applyRotation();
+      // 向きは確定済み（補正不要）。中心合わせのみ実施。
+      const box = new THREE.Box3().setFromObject(current);
+      const center = box.getCenter(new THREE.Vector3());
+      const size = box.getSize(new THREE.Vector3());
+      const maxDim = Math.max(size.x, size.y, size.z);
+      current.position.sub(center);
+      camDist = maxDim * 2.2;
+      // 元マテリアルを保持（モード切替で復元するため）
+      current.traverse(o => { if (o.isMesh) o.userData.origMat = o.material; });
       scene.add(current);
+      applyMode();
       resetCamera();
       status.textContent = '読み込み成功！ドラッグで回転、ホイールでズーム';
       status.style.color = '#6fcf97';
@@ -137,14 +172,13 @@ function loadModel(src) {
 }
 
 // ── UI ──
-document.getElementById('rx').onclick = () => { rot.x = (rot.x + 1) % 4; applyRotation(); resetCamera(); };
-document.getElementById('ry').onclick = () => { rot.y = (rot.y + 1) % 4; applyRotation(); resetCamera(); };
-document.getElementById('rz').onclick = () => { rot.z = (rot.z + 1) % 4; applyRotation(); resetCamera(); };
-document.getElementById('reset').onclick = () => { rot = { x: 1, y: 0, z: 0 }; applyRotation(); resetCamera(); };
+document.getElementById('m-now').onclick = () => setMode('now');
+document.getElementById('m-env').onclick = () => setMode('env');
+document.getElementById('m-flat').onclick = () => setMode('flat');
 document.getElementById('cam').onclick = resetCamera;
 
 const sel = document.getElementById('model');
-MODELS.forEach((m, i) => {
+MODELS.forEach(m => {
   const opt = document.createElement('option');
   opt.value = m;
   opt.textContent = m.replace('3d/', '');
@@ -152,7 +186,6 @@ MODELS.forEach((m, i) => {
 });
 sel.onchange = () => loadModel(sel.value);
 
-updateAngleLabel();
 loadModel(MODELS[0]);
 
 (function animate() {
