@@ -630,10 +630,18 @@ function getClass(i) {
   return d === 0 ? "center" : d === 1 ? "side-1" : d === 2 ? "side-2" : "side-3";
 }
 
+// カード1枚の等倍レイアウト幅（小数）を返す。
+// offsetWidth は整数に丸められ、× current で後ろのカードほど累積ズレを生む。
+// getComputedStyle は scale(transform) の影響を受けず小数px を返すのでズレが出ない。
+function cardInnerWidth() {
+  const cardEl = carousel.querySelector(".card-inner");
+  if (!cardEl) return 240;
+  return parseFloat(getComputedStyle(cardEl).width) || 240;
+}
+
 function adjustTranslate() {
   const W = carousel.parentElement.offsetWidth;
-  const cardEl = carousel.querySelector(".card-inner");
-  const cardW = cardEl ? cardEl.offsetWidth : 240;
+  const cardW = cardInnerWidth();
   const gap = 16;
   const cw = cardW + gap;
   const offset = W / 2 - current * cw - cardW / 2;
@@ -681,15 +689,13 @@ function doFlip(idx) {
 
 function getBaseOffset(idx) {
   const W = carousel.parentElement.offsetWidth;
-  const cardEl = carousel.querySelector(".card-inner");
-  const cardW = cardEl ? cardEl.offsetWidth : 240;
+  const cardW = cardInnerWidth();
   return W / 2 - idx * (cardW + 16) - cardW / 2;
 }
 
 function nearestCard(offset) {
   const W = carousel.parentElement.offsetWidth;
-  const cardEl = carousel.querySelector(".card-inner");
-  const cardW = cardEl ? cardEl.offsetWidth : 240;
+  const cardW = cardInnerWidth();
   const cw = cardW + 16;
   return Math.max(0, Math.min(players.length, Math.round((W / 2 - cardW / 2 - offset) / cw)));
 }
