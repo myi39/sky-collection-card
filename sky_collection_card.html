@@ -452,14 +452,14 @@ window.dispatchEvent(new Event('three-ready'));
                     position:relative; transform-style:preserve-3d; transform:rotateY(0deg);">
           <div style="position:absolute;inset:0;border-radius:11px;overflow:hidden;
                       backface-visibility:hidden;border:0.5px solid rgba(255,255,255,0.12);">
-            <img src="images/card_front/00_%26you表.jpg"
+            <img src="images/card_front/00_%26You1_front.jpg"
                  style="width:100%;height:100%;object-fit:contain;display:block;"
                  draggable="false">
           </div>
           <div style="position:absolute;inset:0;border-radius:11px;overflow:hidden;
                       backface-visibility:hidden;transform:rotateY(180deg);
                       border:0.5px solid rgba(255,255,255,0.1);">
-            <img src="images/card_back/00_%26You裏.png"
+            <img src="images/card_back/00_%26You1_back.png"
                  style="width:100%;height:100%;object-fit:cover;display:block;"
                  draggable="false">
           </div>
@@ -493,35 +493,42 @@ window.dispatchEvent(new Event('three-ready'));
 
 <script>
 const players = [
-  { num:"01", name:"01", desc:"Sample text goes here for this card", frontImg:"images/card_front/01_モブ表.jpg",      backImg:"images/card_back/01_モブ裏.png",      modelSrc:"3d/01_モブ.glb" },
-  { num:"02", name:"02", desc:"Sample text goes here for this card", frontImg:"images/card_front/02_P表.jpg",         backImg:"images/card_back/02_P裏.png",         modelSrc:"3d/02_P.glb" },
-  { num:"03", name:"03", desc:"Sample text goes here for this card", frontImg:"images/card_front/03_オーワタ表.jpg",   backImg:"images/card_back/03_オーワタ裏.png",   modelSrc:"3d/03_オーワタ.glb" },
-  { num:"04", name:"04", desc:"Sample text goes here for this card", frontImg:"images/card_front/04_よしだもち表.jpg", backImg:"images/card_back/04_よしだもち裏.png", modelSrc:"3d/04_よしだもち.glb" },
-  { num:"05", name:"05", desc:"Sample text goes here for this card", frontImg:"images/card_front/05_でかお表.jpg",     backImg:"images/card_back/05_でかお裏.png",     modelSrc:"3d/05_でかお.glb" },
-  { num:"06", name:"06", desc:"Sample text goes here for this card", frontImg:"images/card_front/06_しょう太表.jpg",   backImg:"images/card_back/06_しょう太裏.png",   modelSrc:"3d/06_しょう太.glb" },
-  { num:"07", name:"07", desc:"Sample text goes here for this card", frontImg:"images/card_front/07_名取表.jpg",       backImg:"images/card_back/07_名取裏.png",       modelSrc:"3d/07_名取.glb" },
-  { num:"08", name:"08", desc:"Sample text goes here for this card", frontImg:"images/card_front/08_くに表.jpg",       backImg:"images/card_back/08_くに裏.png",       modelSrc:"3d/08_くに.glb" },
-  { num:"09", name:"09", desc:"Sample text goes here for this card", frontImg:"images/card_front/09_ゆき表.jpg",       backImg:"images/card_back/09_ゆき裏.png",       modelSrc:"3d/09_ゆき.glb" },
-  { num:"10", name:"10", desc:"Sample text goes here for this card", frontImg:"images/card_front/10_すー表.jpg",       backImg:"images/card_back/10_すー裏.png",       modelSrc:"3d/10_すーさん.glb" },
-  { num:"11", name:"11", desc:"Sample text goes here for this card", frontImg:"images/card_front/11_Piano表.jpg",      backImg:"images/card_back/11_Piano裏.png",      modelSrc:"3d/11_piano.glb" },
-  { num:"12", name:"12", desc:"Sample text goes here for this card", frontImg:"images/card_front/12_しか表.jpg",       backImg:"images/card_back/12_しか裏.png",       modelSrc:"3d/12_しか.glb" },
-  { num:"13", name:"13", desc:"Sample text goes here for this card", frontImg:"images/card_front/13_こちゃ表.jpg",     backImg:"images/card_back/13_こちゃ裏.png",     modelSrc:"3d/13_こちゃ.glb" },
-  { num:"14", name:"14", desc:"Sample text goes here for this card", frontImg:"images/card_front/14_トキウ表.jpg",     backImg:"images/card_back/14_トキウ裏.png",     modelSrc:"3d/14_トキウ.glb" },
-  { num:"15", name:"15", desc:"Sample text goes here for this card", frontImg:"images/card_front/15_みぃ表.jpg",       backImg:"images/card_back/15_みぃ裏.png",       modelSrc:"3d/15_みぃ.glb" },
-  { num:"16", name:"16", desc:"Sample text goes here for this card", frontImg:"images/card_front/16_ごま表.jpg",       backImg:"images/card_back/16_ごま裏.png",       modelSrc:"3d/16_ごまさん.glb" },
-  { num:"17", name:"17", desc:"Sample text goes here for this card", frontImg:"images/card_front/17_さくら表.jpg",     backImg:"images/card_back/17_さくら裏.png",     modelSrc:"3d/17_さくらさん.glb" },
-  { num:"18", name:"18", desc:"Sample text goes here for this card", frontImg:"images/card_front/18_社長表.jpg",       backImg:"images/card_back/18_社長裏.png",       modelSrc:"3d/18_社長.glb" },
-  { num:"19", name:"19", desc:"Sample text goes here for this card", frontImg:"images/card_front/19_もわ表.jpg",       backImg:"images/card_back/19_もわ裏.png",       modelSrc:"3d/19_もわ.glb" },
-  { num:"20", name:"20", desc:"Sample text goes here for this card", frontImg:"images/card_front/20_薪表.jpg",         backImg:"images/card_back/20_薪裏.png",         modelSrc:"3d/20_薪.glb" },
-  { num:"21", name:"21", desc:"Sample text goes here for this card", frontImg:"images/card_front/21_志麻表.jpg",       backImg:"images/card_back/21_志麻裏.png",       modelSrc:"3d/21_志麻.glb" },
-  { num:"22", name:"22", desc:"Sample text goes here for this card", frontImg:"images/card_front/22_K斗表.jpg",        backImg:"images/card_back/22_K斗裏.png",        modelSrc:"3d/22_K斗.glb" },
-  { num:"23", name:"23", desc:"Sample text goes here for this card", frontImg:"images/card_front/23_キャロット表.jpg", backImg:"images/card_back/23_キャロット裏.png", modelSrc:"3d/23_キャロット.glb" },
-  { num:"24", name:"24", desc:"Sample text goes here for this card", frontImg:"images/card_front/24_とらのこ表.jpg",   backImg:"images/card_back/24_とらのこ裏.png",   modelSrc:"3d/24_とらのこ.glb" },
-  { num:"25", name:"25", desc:"Sample text goes here for this card", frontImg:"images/card_front/25_ハル表.jpg",       backImg:"images/card_back/25_ハル裏.png",       modelSrc:"3d/25_ハル.glb" },
-  { num:"26", name:"26", desc:"Sample text goes here for this card", frontImg:"images/card_front/26_持田表.jpg",       backImg:"images/card_back/26_持田裏.png",       modelSrc:"3d/26_もちだ.glb" },
-  { num:"27", name:"27", desc:"Sample text goes here for this card", frontImg:"images/card_front/27_そら色表.jpg",     backImg:"images/card_back/27_そら色裏.png",     modelSrc:"3d/27_そら色.glb" },
-  { num:"28", name:"28", desc:"Sample text goes here for this card", frontImg:"images/card_front/28_てん表.jpg",       backImg:"images/card_back/28_てん裏.png",       modelSrc:"3d/28_てん.glb" },
-  { num:"29", name:"29", desc:"Sample text goes here for this card", frontImg:"images/card_front/29_ハチヤ表.jpg",     backImg:"images/card_back/29_ハチヤ裏.png",     modelSrc:"3d/29_ハチヤ.glb" },
+  { num:"01", name:"01", desc:"Sample text goes here for this card", frontImg:"images/card_front/01_Mob_front.jpg",          backImg:"images/card_back/01_Mob_back.png",          modelSrc:"3d/01_Mob.glb" },
+  { num:"02", name:"02", desc:"Sample text goes here for this card", frontImg:"images/card_front/02_P_front.jpg",            backImg:"images/card_back/02_P_back.png",            modelSrc:"3d/02_P.glb" },
+  { num:"03", name:"03", desc:"Sample text goes here for this card", frontImg:"images/card_front/03_ohwata_front.jpg",       backImg:"images/card_back/03_ohwata_back.png",       modelSrc:"3d/03_ohwata.glb" },
+  { num:"04", name:"04", desc:"Sample text goes here for this card", frontImg:"images/card_front/04_Yoshidamochi_front.jpg", backImg:"images/card_back/04_Yoshidamochi_back.png", modelSrc:"3d/04_Yoshidamochi.glb" },
+  { num:"05", name:"05", desc:"Sample text goes here for this card", frontImg:"images/card_front/05_TeDekao_front.jpg",      backImg:"images/card_back/05_TeDekao_back.png",      modelSrc:"3d/05_TeDekao.glb" },
+  { num:"06", name:"06", desc:"Sample text goes here for this card", frontImg:"images/card_front/06_Syouta_front.jpg",       backImg:"images/card_back/06_Syouta_back.png",       modelSrc:"3d/06_Syouta.glb" },
+  { num:"07", name:"07", desc:"Sample text goes here for this card", frontImg:"images/card_front/07_Natori_front.jpg",       backImg:"images/card_back/07_Natori_back.png",       modelSrc:"3d/07_Natori.glb" },
+  { num:"08", name:"08", desc:"Sample text goes here for this card", frontImg:"images/card_front/08_kuni_front.jpg",         backImg:"images/card_back/08_kuni_back.png",         modelSrc:"3d/08_kuni.glb" },
+  { num:"09", name:"09", desc:"Sample text goes here for this card", frontImg:"images/card_front/09_Yuki_front.jpg",         backImg:"images/card_back/09_Yuki_back.png",         modelSrc:"3d/09_Yuki.glb" },
+  { num:"10", name:"10", desc:"Sample text goes here for this card", frontImg:"images/card_front/10_swindler_front.jpg",     backImg:"images/card_back/10_swindler_back.png",     modelSrc:"3d/10_swindler.glb" },
+  { num:"11", name:"11", desc:"Sample text goes here for this card", frontImg:"images/card_front/11_Piano_front.jpg",        backImg:"images/card_back/11_Piano_back.png",        modelSrc:"3d/11_Piano.glb" },
+  { num:"12", name:"12", desc:"Sample text goes here for this card", frontImg:"images/card_front/12_shika_front.jpg",        backImg:"images/card_back/12_shika_back.png",        modelSrc:"3d/12_shika.glb" },
+  { num:"13", name:"13", desc:"Sample text goes here for this card", frontImg:"images/card_front/13_Cocha_front.jpg",        backImg:"images/card_back/13_Cocha_back.png",        modelSrc:"3d/13_Cocha.glb" },
+  { num:"14", name:"14", desc:"Sample text goes here for this card", frontImg:"images/card_front/14_tokiu_front.jpg",        backImg:"images/card_back/14_tokiu_back.png",        modelSrc:"3d/14_tokiu.glb" },
+  { num:"15", name:"15", desc:"Sample text goes here for this card", frontImg:"images/card_front/15_Remyi_front.jpg",        backImg:"images/card_back/15_Remyi_back.png",        modelSrc:"3d/15_Remyi.glb" },
+  { num:"16", name:"16", desc:"Sample text goes here for this card", frontImg:"images/card_front/16_Gomasan_front.jpg",      backImg:"images/card_back/16_Gomasan_back.png",      modelSrc:"3d/16_Gomasan.glb" },
+  { num:"17", name:"17", desc:"Sample text goes here for this card", frontImg:"images/card_front/17_sakura_front.jpg",       backImg:"images/card_back/17_sakura_back.png",       modelSrc:"3d/17_sakura.glb" },
+  { num:"18", name:"18", desc:"Sample text goes here for this card", frontImg:"images/card_front/18_Syacho_front.jpg",       backImg:"images/card_back/18_Syacho_back.png",       modelSrc:"3d/18_Syacho.glb" },
+  { num:"19", name:"19", desc:"Sample text goes here for this card", frontImg:"images/card_front/19_moi_front.jpg",          backImg:"images/card_back/19_moi_back.png",          modelSrc:"3d/19_moi.glb" },
+  { num:"20", name:"20", desc:"Sample text goes here for this card", frontImg:"images/card_front/20_maki_front.jpg",         backImg:"images/card_back/20_maki_back.png",         modelSrc:"3d/20_maki.glb" },
+  { num:"21", name:"21", desc:"Sample text goes here for this card", frontImg:"images/card_front/21_sima_front.jpg",         backImg:"images/card_back/21_sima_back.png",         modelSrc:"3d/21_sima.glb" },
+  { num:"22", name:"22", desc:"Sample text goes here for this card", frontImg:"images/card_front/22_Kto_front.jpg",          backImg:"images/card_back/22_Kto_back.png",          modelSrc:"3d/22_Kto.glb" },
+  { num:"23", name:"23", desc:"Sample text goes here for this card", frontImg:"images/card_front/23_carrot_front.jpg",       backImg:"images/card_back/23_carrot_back.png",       modelSrc:"3d/23_carrot.glb" },
+  { num:"24", name:"24", desc:"Sample text goes here for this card", frontImg:"images/card_front/24_toranoko_front.jpg",     backImg:"images/card_back/24_toranoko_back.png",     modelSrc:"3d/24_toranoko.glb" },
+  { num:"25", name:"25", desc:"Sample text goes here for this card", frontImg:"images/card_front/25_hal_front.jpg",          backImg:"images/card_back/25_hal_back.png",          modelSrc:"3d/25_hal.glb" },
+  { num:"26", name:"26", desc:"Sample text goes here for this card", frontImg:"images/card_front/26_Motida_front.jpg",       backImg:"images/card_back/26_Motida_back.png",       modelSrc:"3d/26_Motida.glb" },
+  { num:"27", name:"27", desc:"Sample text goes here for this card", frontImg:"images/card_front/27_sorairo_front.jpg",      backImg:"images/card_back/27_sorairo_back.png",      modelSrc:"3d/27_sorairo.glb" },
+  { num:"28", name:"28", desc:"Sample text goes here for this card", frontImg:"images/card_front/28_Ten_front.jpg",          backImg:"images/card_back/28_Ten_back.png",          modelSrc:"3d/28_Ten.glb" },
+  { num:"29", name:"29", desc:"Sample text goes here for this card", frontImg:"images/card_front/29_Hachiya_front.jpg",      backImg:"images/card_back/29_Hachiya_back.png",      modelSrc:"3d/29_Hachiya.glb" },
+  { num:"30", name:"30", desc:"Sample text goes here for this card", frontImg:"images/card_front/30_Mirai_front.jpg",        backImg:"images/card_back/30_Mirai_back.png",        modelSrc:"3d/30_Mirai.glb" },
+  { num:"31", name:"31", desc:"Sample text goes here for this card", frontImg:"images/card_front/31_Corno_front.jpg",        backImg:"images/card_back/31_Corno_back.png",        modelSrc:"3d/31_Corno.glb" },
+  { num:"32", name:"32", desc:"Sample text goes here for this card", frontImg:"images/card_front/32_Ray_front.jpg",          backImg:"images/card_back/32_Ray_back.png",          modelSrc:"3d/32_Ray.glb" },
+  { num:"33", name:"33", desc:"Sample text goes here for this card", frontImg:"images/card_front/33_Kotori_front.jpg",       backImg:"images/card_back/33_Kotori_back.png",       modelSrc:"3d/33_Kotori.glb" },
+  { num:"34", name:"34", desc:"Sample text goes here for this card", frontImg:"images/card_front/34_Yamukumi_front.jpg",     backImg:"images/card_back/34_Yamukumi_back.png",     modelSrc:"3d/34_Yamukumi.glb" },
+  { num:"35", name:"35", desc:"Sample text goes here for this card", frontImg:"images/card_front/35_odenchi_front.jpg",      backImg:"images/card_back/35_odenchi_back.png",      modelSrc:"3d/35_odenchi.glb" },
+  { num:"36", name:"36", desc:"Sample text goes here for this card", frontImg:"images/card_front/36_kyohe_front.jpg",        backImg:"images/card_back/36_kyohe_back.png",        modelSrc:"3d/36_kyohe.glb" },
 ];
 
 // 3D ビューの背景画像（全カード共通）
@@ -581,7 +588,7 @@ function buildCard(p, idx) {
         <img data-src="${p.frontImg}" data-hi-src="${p.frontImg.replace('card_front/','card_front_hi/')}" class="card-front-img" alt="${p.name}" draggable="false" decoding="async">
       </div>
       <div class="card-face card-back" style="padding:0">
-        <img data-back-src="${p.backImg}" class="card-front-img" alt="${p.name}" draggable="false" decoding="async">
+        <img data-back-src="${p.backImg}" data-back-lo-src="${p.backImg.replace('card_back/','card_back_lo/')}" class="card-front-img" alt="${p.name}" draggable="false" decoding="async">
       </div>
     </div>`;
 
@@ -678,8 +685,9 @@ function doFlip(idx) {
     // 次の ≡0(mod360) の位置 + 2スピン
     target = base + 360 + 720;
     flipped.delete(idx);
-    // 表に戻したらメモリ節約のため裏画像を解放（アニメ完了後）
-    if (backImg) setTimeout(() => { if (!flipped.has(idx)) backImg.removeAttribute('src'); }, 900);
+    // 表に戻したらメモリ節約のため裏画像を解放（アニメ完了後）。
+    // ただし中央カードはフルを保持し続ける（再フリップを即・黒なしにするため）。
+    if (backImg) setTimeout(() => { if (!flipped.has(idx) && idx !== current) backImg.removeAttribute('src'); }, 900);
   }
   cardDeg[idx] = target;
   ci.style.transition = "transform 0.85s cubic-bezier(0.16, 1, 0.3, 1)";
@@ -796,6 +804,31 @@ function applyCenterHiRes() {
       if (img.getAttribute('src') !== img.dataset.hiSrc) img.src = img.dataset.hiSrc;
     } else {
       if (img.getAttribute('src') !== img.dataset.src) img.src = img.dataset.src;
+    }
+  }
+  updateCenterBack();
+}
+
+// 裏画像のメモリ管理（停止時に applyCenterHiRes から呼ぶ）。
+//  - 中央カード      : フル(769px)を先読み＆保持 → フリップが即・黒なし
+//  - 非中央でフリップ中: 低画質(300px)へ落としてフルをメモリ解放（表示は枠サイズ一致のまま）
+//  - 非中央で表向き   : src を破棄して完全解放
+function updateCenterBack() {
+  const slots = carousel.children;
+  for (let i = 0; i < slots.length; i++) {
+    const img = slots[i].querySelector('.card-back img[data-back-src]');
+    if (!img) continue;
+    const full = img.dataset.backSrc;
+    const lo = img.dataset.backLoSrc;
+    if (i === current) {
+      if (img.getAttribute('src') !== full) {
+        img.src = full;
+        if (img.decode) img.decode().catch(() => {});
+      }
+    } else if (flipped.has(i)) {
+      if (lo && img.getAttribute('src') !== lo) img.src = lo;
+    } else {
+      if (img.hasAttribute('src')) img.removeAttribute('src');
     }
   }
 }
@@ -1008,10 +1041,10 @@ function init() {
        style="display:none;width:var(--card-w);height:var(--card-h);
               position:relative;transform-style:preserve-3d;border-radius:11px;cursor:pointer">
     <div class="card-face">
-      <img data-src="images/card_front/00_%26you表.jpg" data-hi-src="images/card_front_hi/00_%26you表.jpg" class="card-front-img" alt="&You" draggable="false" decoding="async">
+      <img data-src="images/card_front/00_%26You1_front.jpg" data-hi-src="images/card_front_hi/00_%26You1_front.jpg" class="card-front-img" alt="&You" draggable="false" decoding="async">
     </div>
     <div class="card-face card-back" style="transform:rotateY(180deg);padding:0">
-      <img data-back-src="images/card_back/00_%26You裏.png" class="card-front-img" alt="&You" draggable="false" decoding="async">
+      <img data-back-src="images/card_back/00_%26You1_back.png" data-back-lo-src="images/card_back_lo/00_%26You1_back.png" class="card-front-img" alt="&You" draggable="false" decoding="async">
     </div>
   </div>`;
   carousel.appendChild(ghostSlot);
@@ -1172,7 +1205,7 @@ let modal_camDist = 0, modal_hasMoved = false, modal_resetTimer = null;
 
 async function openModal3d(idx) {
   closeModal3d();
-  const p = (idx >= 0 && idx < players.length) ? players[idx] : { name: '&You', modelSrc: '3d/00_%26you.glb' };
+  const p = (idx >= 0 && idx < players.length) ? players[idx] : { name: '&You', modelSrc: '3d/00_%26You1.glb' };
   document.getElementById('modal3dName').textContent = p.name;
 
   // 3D ビューの背景画像（全カード共通）
@@ -1195,8 +1228,10 @@ async function openModal3d(idx) {
   modalScene = scene;
   const camera = new THREE.PerspectiveCamera(45, w / h, 0.01, 1000);
 
-  scene.add(new THREE.AmbientLight(0xffffff, 1.2));
-  const dir = new THREE.DirectionalLight(0xffffff, 1.8);
+  // 立体みを出しつつ暗くしないため 環境光（底上げ）＋キーライト（陰影）を併用
+  // （3d_test.html で確定: ambInt 2.0 / keyInt 2.0 / 環境マップなし）
+  scene.add(new THREE.AmbientLight(0xffffff, 2.0));
+  const dir = new THREE.DirectionalLight(0xffffff, 2.0);
   dir.position.set(3, 5, 4);
   scene.add(dir);
 
@@ -1209,6 +1244,59 @@ async function openModal3d(idx) {
   modalControls.enableDamping = true;
   modalControls.dampingFactor = 0.06;
   modalControls.enablePan = true;
+  modalControls.rotateSpeed = 0.55;   // 上下左右の回転感度（既定1.0→緩める）
+
+  // ── 縦回転のラバーバンド（USDZ 風）──
+  // 極角 polar: 0°=真上, 90°=水平, 180°=真下
+  const DEG = THREE.MathUtils.degToRad;
+  const RB = {
+    hardMin: DEG(10),   // これ以上は絶対に行けない（真上の手前）
+    softMin: DEG(45),   // 自由ゾーン上端＝ラバー開始＆離したときの戻り先
+    softMax: DEG(135),  // 自由ゾーン下端＝ラバー開始＆離したときの戻り先
+    hardMax: DEG(170),  // これ以上は絶対に行けない（真下の手前）
+    dragK: 0.04,        // ドラッグ中の基本の引き戻し強さ（抵抗感）
+    dragRamp: 3.0,      // 侵入が深いほど強くなる係数（端の重さ）
+    maxK: 0.45,         // ドラッグ中の引き戻しの上限（壁の硬さ）
+    releaseK: 0.10,     // リリース後の戻る速さ（スナップバック）
+  };
+  // ハード壁は OrbitControls 標準機能で確実に止める
+  modalControls.minPolarAngle = RB.hardMin;
+  modalControls.maxPolarAngle = RB.hardMax;
+
+  let rbDragging = false;
+  modalControls.addEventListener('start', () => { rbDragging = true; });
+  modalControls.addEventListener('end',   () => { rbDragging = false; });
+
+  // 指定した極角へカメラを再配置（方位角・距離は維持）
+  const _rbOffset = new THREE.Vector3();
+  const _rbSph = new THREE.Spherical();
+  function rbSetPolar(polar) {
+    _rbOffset.copy(camera.position).sub(modalControls.target);
+    _rbSph.setFromVector3(_rbOffset);
+    _rbSph.phi = polar;
+    _rbSph.makeSafe();
+    _rbOffset.setFromSpherical(_rbSph);
+    camera.position.copy(modalControls.target).add(_rbOffset);
+    camera.lookAt(modalControls.target);
+  }
+  // 毎フレーム：自由ゾーン外なら最寄りのソフト境界へ引き戻す
+  //  - ドラッグ中は侵入が深いほど強く（抵抗感）
+  //  - リリース後はソフト境界（45°/135°）へスッと戻る
+  function rbApply() {
+    const p = modalControls.getPolarAngle();
+    let target = null, range = 0;
+    if (p < RB.softMin)      { target = RB.softMin; range = RB.softMin - RB.hardMin; }
+    else if (p > RB.softMax) { target = RB.softMax; range = RB.hardMax - RB.softMax; }
+    if (target === null) return;
+    let k;
+    if (rbDragging) {
+      const penetration = Math.min(Math.abs(target - p) / range, 1);
+      k = Math.min(RB.dragK * (1 + RB.dragRamp * penetration), RB.maxK);
+    } else {
+      k = RB.releaseK;
+    }
+    rbSetPolar(p + (target - p) * k);
+  }
 
   // リセットボタン
   const resetBtn = document.getElementById('modal-3d-reset');
@@ -1237,17 +1325,20 @@ async function openModal3d(idx) {
   const loader = new GLTFLoader();
   loader.load(p.modelSrc, gltf => {
     // 新モデル（2026/06/21 差し替え）は正面を向いて出力されているため向き補正は不要
-    // ライティングを掛けず、カード画像と同じ明るさでテクスチャをそのまま貼る（陰影なし）
+    // 立体みを出すため MeshStandardMaterial に統一（rough 0 / metal 0）。
+    // 明るさは環境光2.0＋キーライト2.0で底上げし、画像と同等の明るさを保つ。
     gltf.scene.traverse(o => {
       if (!o.isMesh || !o.material) return;
       const src = o.material;
-      o.material = new THREE.MeshBasicMaterial({
+      o.material = new THREE.MeshStandardMaterial({
         map: src.map || null,
         color: src.map ? 0xffffff : (src.color ? src.color.clone() : 0xffffff),
         transparent: src.transparent,
         alphaTest: src.alphaTest,
         side: src.side,
         vertexColors: src.vertexColors,
+        roughness: 0,
+        metalness: 0,
       });
     });
     const box = new THREE.Box3().setFromObject(gltf.scene);
@@ -1264,6 +1355,7 @@ async function openModal3d(idx) {
   function animate() {
     modalAnimId = requestAnimationFrame(animate);
     modalControls.update();
+    rbApply();
     modalRenderer.render(scene, camera);
   }
   animate();

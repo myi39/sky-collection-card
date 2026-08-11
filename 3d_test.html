@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>3D 見た目比較テスト</title>
+<title>3D 調整テスト（立体み＋ラバーバンド）</title>
 <script type="importmap">
 {
   "imports": {
@@ -16,23 +16,40 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: #111; color: #eee; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 12px; padding: 16px; }
   canvas { border-radius: 8px; }
-  #mode { font-size: 20px; font-weight: bold; }
+  .stage { display:flex; gap:16px; align-items:center; justify-content:center; flex-wrap:wrap; }
+  .stage figure { display:flex; flex-direction:column; align-items:center; gap:6px; }
+  .stage figcaption { font-size:12px; color:#888; }
+  #ref { height:500px; width:auto; max-width:46vw; border-radius:8px; background:#1a1a2e; }
+  @media (max-width:720px){ #ref{ height:auto; width:min(80vw,360px); max-width:none; } }
   #status { font-size: 13px; color: #aaa; }
   .row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; align-items: center; }
   button { background: #2a2a40; color: #eee; border: 1px solid #444; border-radius: 6px; padding: 8px 14px; font-size: 14px; cursor: pointer; }
   button:hover { background: #3a3a55; }
-  button.active { background: #5a6cff; border-color: #5a6cff; }
   select { background: #2a2a40; color: #eee; border: 1px solid #444; border-radius: 6px; padding: 7px 10px; font-size: 14px; }
   .hint { font-size: 12px; color: #888; max-width: 520px; text-align: center; }
+  #panel { background:#1c1c2e; border:1px solid #333; border-radius:8px; padding:12px 16px; width:min(92vw,520px); display:flex; flex-direction:column; gap:7px; }
+  #panel h3 { font-size:13px; color:#9aa; margin:6px 0 2px; font-weight:bold; }
+  #panel h3:first-child { margin-top:0; }
+  .sld { display:grid; grid-template-columns: 140px 1fr 56px; align-items:center; gap:10px; font-size:12px; }
+  .sld label { color:#bbb; }
+  .sld input[type=range] { width:100%; accent-color:#5a6cff; }
+  .sld .val { color:#5a6cff; font-weight:bold; text-align:right; font-variant-numeric:tabular-nums; }
+  #panel .pbtn { align-self:flex-start; margin-top:6px; font-size:12px; padding:5px 12px; }
+  #light-toggles { display:flex; gap:16px; flex-wrap:wrap; margin-bottom:4px; }
+  #light-toggles label { display:flex; align-items:center; gap:5px; font-size:12px; color:#cdd; cursor:pointer; }
+  #light-toggles input { accent-color:#5a6cff; width:15px; height:15px; }
 </style>
 </head>
 <body>
-<canvas id="c" width="500" height="500"></canvas>
-<div id="mode">現状（陰影あり）</div>
-<div class="row">
-  <button id="m-now" class="active">現状（陰影あり）</button>
-  <button id="m-env">A: 環境マップ（陰影＋明るく）</button>
-  <button id="m-flat">D: 画像そのまま（陰影なし）</button>
+<div class="stage">
+  <figure>
+    <canvas id="c" width="500" height="500"></canvas>
+    <figcaption>3Dモデル（調整対象）</figcaption>
+  </figure>
+  <figure>
+    <img id="ref" alt="カード表画像">
+    <figcaption>カード表画像（明るさの基準）</figcaption>
+  </figure>
 </div>
 <div class="row">
   <label>モデル:</label>
@@ -40,7 +57,18 @@
   <button id="cam">カメラ正面に戻す</button>
 </div>
 <div id="status">読み込み中...</div>
-<p class="hint">3つの描画モードを切り替えて見比べてください。ドラッグで回転、ホイールでズーム。「現状」は今の本番と同じ。「D」が"カード画像をそのまま貼る"案です。どれが良いか教えてください。</p>
+<div id="polar" style="font-size:13px;color:#5a6cff;font-weight:bold;">極角: --</div>
+<p class="hint">立体み（陰影）と明るさをスライダーで調整。暗くならない範囲で立体感が出る値を探してください。<br>
+ドラッグで回転（縦はラバーバンド）、ホイールでズーム。</p>
+
+<div id="panel">
+  <h3>見た目（立体み・明るさ）</h3>
+  <div id="light-toggles"></div>
+  <div id="sliders-look"></div>
+  <h3>操作（ラバーバンド）</h3>
+  <div id="sliders-rb"></div>
+  <button class="pbtn" id="dump">現在値をコンソールに出力</button>
+</div>
 
 <script type="module">
 import * as THREE from 'three';
@@ -49,16 +77,16 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
 const status = document.getElementById('status');
-const modeLabel = document.getElementById('mode');
 const canvas = document.getElementById('c');
 
-// ファイル名は mac 由来 NFD 形なので NFD 正規化してから読み込む
+// ファイル名は mac 由来 NFD 形なので NFD 正規化してから読み込む。
+// モデル名と画像名は綴りが違う（例 11_piano.glb ⇄ 11_Piano表.jpg）ので明示的に対応づける。
 const MODELS = [
-  '3d/11_piano.glb',
-  '3d/02_P.glb',
-  '3d/01_モブ.glb',
-  '3d/18_社長.glb',
-].map(s => s.normalize('NFD'));
+  { label: '11_Piano', model: '3d/11_Piano.glb', img: 'images/card_front/11_Piano_front.jpg' },
+  { label: '02_P',     model: '3d/02_P.glb',     img: 'images/card_front/02_P_front.jpg' },
+  { label: '01_Mob',  model: '3d/01_Mob.glb',  img: 'images/card_front/01_Mob_front.jpg' },
+  { label: '18_Syacho',  model: '3d/18_Syacho.glb',  img: 'images/card_front/18_Syacho_front.jpg' },
+].map(o => ({ label: o.label, model: o.model.normalize('NFD'), img: o.img.normalize('NFD') }));
 
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.setPixelRatio(window.devicePixelRatio);
@@ -70,64 +98,185 @@ const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 1000);
 const CAM_DIST_DEFAULT = 5;
 camera.position.set(0, 0, CAM_DIST_DEFAULT);
 
-// 本番と同じライト（現状・A モードで使用）
-const ambient = new THREE.AmbientLight(0xffffff, 1.2);
-const dir = new THREE.DirectionalLight(0xffffff, 1.8);
-dir.position.set(3, 5, 4);
-scene.add(ambient, dir);
+// ── 見た目（立体み）設定 ──
+// 立体感は出しつつ暗くしないため「環境マップ＋環境光（底上げ）＋キーライト」を併用。
+//  - ambient/env : どんな面も最低限明るく保つ（暗さ防止）
+//  - directional : 面の向きで明暗を付ける（立体み）
+//  - roughness   : 低い=照りで立体感, 高い=マット
+const LK = {
+  envInt: 1.0,    // 環境マップ強度（柔らかい陰影・写り込み）
+  keyInt: 1.2,    // キーライト強度（立体みの主役）
+  ambInt: 1.2,    // 環境光＝全体の底上げ（暗さ防止）
+  rough:  0.7,    // ラフネス（質感）
+  metal:  0.0,    // メタルネス（金属感）
+};
 
-// 環境マップ（A モード用）
+// 環境マップ（柔らかい陰影と明るさを足す）
 const pmrem = new THREE.PMREMGenerator(renderer);
 const envTex = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+scene.environment = envTex;
+
+const ambient = new THREE.AmbientLight(0xffffff, LK.ambInt);
+const keyLight = new THREE.DirectionalLight(0xffffff, LK.keyInt);
+keyLight.position.set(3, 5, 4);
+scene.add(ambient, keyLight);
+
+let modelMats = [];   // 現在モデルのマテリアル（ライブ調整用）
+function applyLook() {
+  ambient.intensity = LK.ambInt;
+  keyLight.intensity = LK.keyInt;
+  for (const m of modelMats) {
+    if ('roughness' in m)        m.roughness = LK.rough;
+    if ('metalness' in m)        m.metalness = LK.metal;
+    if ('envMapIntensity' in m)  m.envMapIntensity = LK.envInt;
+    m.needsUpdate = true;
+  }
+}
 
 const controls = new OrbitControls(camera, canvas);
 controls.enableDamping = true;
 controls.dampingFactor = 0.06;
+controls.rotateSpeed = 0.55;   // 上下左右の回転感度（既定1.0→緩める / パネルで調整可）
+
+// ── 縦回転のラバーバンド（USDZ 風）──
+// 極角 polar: 0°=真上, 90°=水平, 180°=真下
+const DEG = THREE.MathUtils.degToRad;
+const RB = {
+  hardMin: DEG(10),   // これ以上は絶対に行けない（真上の手前）
+  softMin: DEG(45),   // 自由ゾーンの上端＝ラバー開始＆離したときの戻り先
+  softMax: DEG(135),  // 自由ゾーンの下端＝ラバー開始＆離したときの戻り先
+  hardMax: DEG(170),  // これ以上は絶対に行けない（真下の手前）
+  dragK: 0.04,        // ドラッグ中の引き戻し強さ（基本の抵抗感）
+  dragRamp: 3.0,      // 侵入が深いほど強くなる係数（端の重さ）
+  maxK: 0.45,         // ドラッグ中の引き戻しの上限（壁の硬さ）
+  releaseK: 0.10,     // リリース後の戻る速さ（スナップバック）
+};
+controls.minPolarAngle = RB.hardMin;
+controls.maxPolarAngle = RB.hardMax;
+
+let rbDragging = false;
+controls.addEventListener('start', () => { rbDragging = true; });
+controls.addEventListener('end',   () => { rbDragging = false; });
+
+const _rbOffset = new THREE.Vector3();
+const _rbSph = new THREE.Spherical();
+function rbSetPolar(polar) {
+  _rbOffset.copy(camera.position).sub(controls.target);
+  _rbSph.setFromVector3(_rbOffset);
+  _rbSph.phi = polar;
+  _rbSph.makeSafe();
+  _rbOffset.setFromSpherical(_rbSph);
+  camera.position.copy(controls.target).add(_rbOffset);
+  camera.lookAt(controls.target);
+}
+function rbApply() {
+  const p = controls.getPolarAngle();
+  let target = null, range = 0;
+  if (p < RB.softMin)      { target = RB.softMin; range = RB.softMin - RB.hardMin; }
+  else if (p > RB.softMax) { target = RB.softMax; range = RB.hardMax - RB.softMax; }
+  if (target === null) return;
+  let k;
+  if (rbDragging) {
+    const penetration = Math.min(Math.abs(target - p) / range, 1);
+    k = Math.min(RB.dragK * (1 + RB.dragRamp * penetration), RB.maxK);
+  } else {
+    k = RB.releaseK;
+  }
+  rbSetPolar(p + (target - p) * k);
+}
+
+// ── ライブ調整パネル ──
+const r2d = r => r * 180 / Math.PI;
+function mkSlider(container, label, min, max, step, get, set, fmt) {
+  const row = document.createElement('div');
+  row.className = 'sld';
+  const lab = document.createElement('label'); lab.textContent = label;
+  const inp = document.createElement('input');
+  inp.type = 'range'; inp.min = min; inp.max = max; inp.step = step; inp.value = get();
+  const val = document.createElement('span'); val.className = 'val';
+  const show = () => { val.textContent = fmt(parseFloat(inp.value)); };
+  inp.addEventListener('input', () => { set(parseFloat(inp.value)); show(); });
+  show();
+  row.append(lab, inp, val);
+  container.appendChild(row);
+}
+
+// 光源ON/OFFトグル（1つずつ消して各効果を確認できる）
+const togEl = document.getElementById('light-toggles');
+function mkToggle(label, checked, onChange) {
+  const lab = document.createElement('label');
+  const cb = document.createElement('input');
+  cb.type = 'checkbox'; cb.checked = checked;
+  cb.addEventListener('change', () => onChange(cb.checked));
+  const span = document.createElement('span'); span.textContent = label;
+  lab.append(cb, span);
+  togEl.appendChild(lab);
+}
+mkToggle('環境光', true,    on => { ambient.visible = on; });
+mkToggle('キーライト', true, on => { keyLight.visible = on; });
+mkToggle('環境マップ', true, on => { scene.environment = on ? envTex : null; });
+
+// 見た目（立体み）
+const lookEl = document.getElementById('sliders-look');
+mkSlider(lookEl, '環境光（底上げ）', 0, 3, 0.05,
+  () => LK.ambInt, v => { LK.ambInt = v; applyLook(); }, v => v.toFixed(2));
+mkSlider(lookEl, 'キーライト（陰影）', 0, 3, 0.05,
+  () => LK.keyInt, v => { LK.keyInt = v; applyLook(); }, v => v.toFixed(2));
+mkSlider(lookEl, '環境マップ強度', 0, 3, 0.05,
+  () => LK.envInt, v => { LK.envInt = v; applyLook(); }, v => v.toFixed(2));
+mkSlider(lookEl, 'ラフネス（質感）', 0, 1, 0.02,
+  () => LK.rough, v => { LK.rough = v; applyLook(); }, v => v.toFixed(2));
+mkSlider(lookEl, 'メタルネス', 0, 1, 0.02,
+  () => LK.metal, v => { LK.metal = v; applyLook(); }, v => v.toFixed(2));
+
+// 操作（ラバーバンド）
+const rbEl = document.getElementById('sliders-rb');
+mkSlider(rbEl, '回転感度', 0.1, 1.0, 0.05,
+  () => controls.rotateSpeed, v => { controls.rotateSpeed = v; }, v => v.toFixed(2));
+mkSlider(rbEl, 'ソフト境界(°)', 10, 80, 1,
+  () => r2d(RB.softMin),
+  v => { RB.softMin = DEG(v); RB.softMax = DEG(180 - v); },
+  v => v.toFixed(0) + '°');
+mkSlider(rbEl, 'ハード壁(°)', 0, 44, 1,
+  () => r2d(RB.hardMin),
+  v => { RB.hardMin = DEG(v); RB.hardMax = DEG(180 - v);
+         controls.minPolarAngle = RB.hardMin; controls.maxPolarAngle = RB.hardMax; },
+  v => v.toFixed(0) + '°');
+mkSlider(rbEl, '基本の重さ', 0, 0.30, 0.01,
+  () => RB.dragK, v => { RB.dragK = v; }, v => v.toFixed(2));
+mkSlider(rbEl, '端の重さ', 0, 8, 0.5,
+  () => RB.dragRamp, v => { RB.dragRamp = v; }, v => v.toFixed(1));
+mkSlider(rbEl, '壁の硬さ上限', 0.10, 1.0, 0.05,
+  () => RB.maxK, v => { RB.maxK = v; }, v => v.toFixed(2));
+mkSlider(rbEl, '戻る速さ', 0.05, 0.50, 0.01,
+  () => RB.releaseK, v => { RB.releaseK = v; }, v => v.toFixed(2));
+
+document.getElementById('dump').onclick = () => {
+  const cfg = {
+    look: {
+      ambInt: +LK.ambInt.toFixed(2),
+      keyInt: +LK.keyInt.toFixed(2),
+      envInt: +LK.envInt.toFixed(2),
+      rough:  +LK.rough.toFixed(2),
+      metal:  +LK.metal.toFixed(2),
+    },
+    rubber: {
+      rotateSpeed: +controls.rotateSpeed.toFixed(2),
+      softMinDeg: Math.round(r2d(RB.softMin)),
+      hardMinDeg: Math.round(r2d(RB.hardMin)),
+      dragK: +RB.dragK.toFixed(2),
+      dragRamp: +RB.dragRamp.toFixed(1),
+      maxK: +RB.maxK.toFixed(2),
+      releaseK: +RB.releaseK.toFixed(2),
+    },
+  };
+  console.log('[3D config]', cfg);
+  alert('現在値（本番反映に使えます）:\n' + JSON.stringify(cfg, null, 2));
+};
 
 const loader = new GLTFLoader();
 let current = null;     // 現在のモデル scene
 let camDist = CAM_DIST_DEFAULT;
-let mode = 'now';
-
-function setMode(m) {
-  mode = m;
-  ['now', 'env', 'flat'].forEach(k => {
-    document.getElementById('m-' + (k === 'now' ? 'now' : k)).classList.toggle('active', k === m);
-  });
-  modeLabel.textContent = m === 'now' ? '現状（陰影あり）' : m === 'env' ? 'A: 環境マップ' : 'D: 画像そのまま（陰影なし）';
-  applyMode();
-}
-
-function applyMode() {
-  if (!current) return;
-  // 環境マップ: A のときだけ有効
-  scene.environment = (mode === 'env') ? envTex : null;
-  // ライト: D（陰影なし）のときは消す（Basic は無視するが見た目を明確化）
-  const litVisible = (mode !== 'flat');
-  ambient.visible = litVisible;
-  dir.visible = litVisible;
-
-  current.traverse(o => {
-    if (!o.isMesh || !o.userData.origMat) return;
-    if (mode === 'flat') {
-      // 元マテリアルのテクスチャをそのまま貼る陰影なしマテリアル
-      if (!o.userData.basicMat) {
-        const src = o.userData.origMat;
-        o.userData.basicMat = new THREE.MeshBasicMaterial({
-          map: src.map || null,
-          color: src.map ? 0xffffff : (src.color ? src.color.clone() : 0xffffff),
-          transparent: src.transparent,
-          alphaTest: src.alphaTest,
-          side: src.side,
-          vertexColors: src.vertexColors,
-        });
-      }
-      o.material = o.userData.basicMat;
-    } else {
-      o.material = o.userData.origMat;
-    }
-  });
-}
 
 function resetCamera() {
   camera.position.set(0, 0, camDist);
@@ -136,12 +285,15 @@ function resetCamera() {
   controls.update();
 }
 
-function loadModel(src) {
+const refImg = document.getElementById('ref');
+function loadModel(entry) {
   if (current) { scene.remove(current); current = null; }
+  modelMats = [];
+  refImg.src = entry.img;   // 同番号のカード表画像を基準として表示
   status.textContent = '読み込み中...';
   status.style.color = '#aaa';
   loader.load(
-    src,
+    entry.model,
     gltf => {
       current = gltf.scene;
       // 向きは確定済み（補正不要）。中心合わせのみ実施。
@@ -151,10 +303,23 @@ function loadModel(src) {
       const maxDim = Math.max(size.x, size.y, size.z);
       current.position.sub(center);
       camDist = maxDim * 2.2;
-      // 元マテリアルを保持（モード切替で復元するため）
-      current.traverse(o => { if (o.isMesh) o.userData.origMat = o.material; });
+      // 立体み用に MeshStandardMaterial へ統一（テクスチャ色はそのまま）
+      current.traverse(o => {
+        if (!o.isMesh || !o.material) return;
+        const m = o.material;
+        const std = new THREE.MeshStandardMaterial({
+          map: m.map || null,
+          color: m.map ? 0xffffff : (m.color ? m.color.clone() : 0xffffff),
+          transparent: m.transparent,
+          alphaTest: m.alphaTest,
+          side: m.side,
+          vertexColors: m.vertexColors,
+        });
+        o.material = std;
+        modelMats.push(std);
+      });
+      applyLook();
       scene.add(current);
-      applyMode();
       resetCamera();
       status.textContent = '読み込み成功！ドラッグで回転、ホイールでズーム';
       status.style.color = '#6fcf97';
@@ -172,25 +337,27 @@ function loadModel(src) {
 }
 
 // ── UI ──
-document.getElementById('m-now').onclick = () => setMode('now');
-document.getElementById('m-env').onclick = () => setMode('env');
-document.getElementById('m-flat').onclick = () => setMode('flat');
 document.getElementById('cam').onclick = resetCamera;
 
 const sel = document.getElementById('model');
-MODELS.forEach(m => {
+MODELS.forEach((m, i) => {
   const opt = document.createElement('option');
-  opt.value = m;
-  opt.textContent = m.replace('3d/', '');
+  opt.value = i;
+  opt.textContent = m.label;
   sel.appendChild(opt);
 });
-sel.onchange = () => loadModel(sel.value);
+sel.onchange = () => loadModel(MODELS[+sel.value]);
 
 loadModel(MODELS[0]);
 
+const polarReadout = document.getElementById('polar');
 (function animate() {
   requestAnimationFrame(animate);
   controls.update();
+  rbApply();
+  if (polarReadout) {
+    polarReadout.textContent = '極角: ' + (controls.getPolarAngle() * 180 / Math.PI).toFixed(1) + '°';
+  }
   renderer.render(scene, camera);
 })();
 </script>
