@@ -230,17 +230,29 @@ window.dispatchEvent(new Event('three-ready'));
 
   .flip-hint { font-size: 11px; color: rgba(255,255,255,0.16); letter-spacing: 0.08em; text-align: center; margin: 12px 0 4px; position: relative; z-index: 5; }
 
+  /* 窓：はみ出したドットを隠す。幅は JS が --dots-window にセット */
   .nav-dots {
-    display: flex;
-    gap: 6px;
-    justify-content: center;
+    width: var(--dots-window, 300px);
+    max-width: 100%;
+    margin: 0 auto;
+    overflow: hidden;
     padding: 16px 0 22px;
     position: relative;
     z-index: 5;
     touch-action: none;
   }
 
-  .dot { width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,0.14); cursor: pointer; transition: all 0.3s; }
+  /* トラック：現在カードのドットが窓の中央に来るよう JS が --dots-shift をセット */
+  .nav-dots-track {
+    display: flex;
+    gap: 6px;
+    width: max-content;
+    transform: translateX(var(--dots-shift, 0px));
+    transition: transform 0.3s;
+  }
+  .nav-dots.scrubbing .nav-dots-track { transition: transform 0.1s linear; } /* なぞり中は追従を速く */
+
+  .dot { flex: none; width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,0.14); cursor: pointer; transition: all 0.3s; }
   .dot.active { background: rgba(255,255,255,0.65); width: 15px; border-radius: 3px; }
   @keyframes dot-pop {
     0%   { transform: scale(1); }
@@ -558,6 +570,30 @@ let motionActive = false;   // スクラブ/フリック中 = true（この間�
 const carousel = document.getElementById("carousel");
 const navDots = document.getElementById("navDots");
 let pendingPop = false; // 次の buildDots で active ドットを弾ませる
+
+// ─── Nav-dots の窓（現在カードを常に中央に置き、ドット列の方をスライドさせる）───
+const DOTS_WINDOW_MAX = 300; // 窓の最大幅(px)。絞るほど現在位置に寄った見え方になる
+const DOTS_SIDE_PAD   = 24;  // 画面の左右に最低限残す余白(px)
+const DOT_PITCH       = 11;  // ドット5px + gap6px
+const DOT_ACTIVE_HALF = 7.5; // active ドット(幅15px)の半分
+
+const navDotsTrack = document.createElement("div");
+navDotsTrack.className = "nav-dots-track";
+navDots.appendChild(navDotsTrack);
+
+// 現在カードのドット中心が窓の中央に来るようトラックをずらす。
+// i 番目のドットの中心は、手前の i 個が 11px ピッチで並ぶので 11i + 7.5。
+function updateDotsShift() {
+  const shift = navDots.clientWidth / 2 - (DOT_PITCH * current + DOT_ACTIVE_HALF);
+  navDots.style.setProperty("--dots-shift", shift + "px");
+}
+
+function applyDotsWindow() {
+  const w = Math.min(DOTS_WINDOW_MAX, window.innerWidth - DOTS_SIDE_PAD * 2);
+  navDots.style.setProperty("--dots-window", Math.max(0, w) + "px");
+  updateDotsShift();
+}
+
 const infoName = document.getElementById("infoName");
 const infoDesc = document.getElementById("infoDesc");
 
@@ -614,22 +650,24 @@ function buildDots() {
     : (revealDone ? players.length + 1 : players.length);
 
   // 動作中で個数が変わらなければ、再生成せず active クラスだけ移す（DOM churn 回避）
-  if (motionActive && navDots.children.length === needed && needed > 0) {
+  if (motionActive && navDotsTrack.children.length === needed && needed > 0) {
     for (let i = 0; i < needed; i++) {
-      navDots.children[i].classList.toggle("active", i === current);
+      navDotsTrack.children[i].classList.toggle("active", i === current);
     }
+    updateDotsShift();
     return;
   }
 
-  navDots.innerHTML = "";
+  navDotsTrack.innerHTML = "";
   if (needed === 0) return; // reveal前はdots非表示
   for (let i = 0; i < needed; i++) {
     const d = document.createElement("div");
     d.className = "dot" + (i === current ? " active" : "");
     if (i === current && pendingPop) d.classList.add("pop");
-    navDots.appendChild(d);
+    navDotsTrack.appendChild(d);
   }
   pendingPop = false;
+  updateDotsShift();
 }
 
 function getClass(i) {
@@ -882,63 +920,101 @@ function navigateTo(idx) {
   render();
 }
 
-// ─── Nav-dots スクラブ（iPhone ホーム画面風） ───────────────
-let scrubbing = false;
-let scrubFirstC = 0, scrubLastC = 0, scrubCount = 0;
-let scrubTargetIdx = null, scrubRaf = null;
+// ─── Nav-dots スクラブ ───────────────────────────────────
+// 押した位置を中心に不感帯を置き、内側と外側で操作の意味を変える。
+//   不感帯の内側 … 指の位置どおりに動く（狙った1枚で止められる）
+//   不感帯の外側 … 指を止めていても送り続ける。はみ出した距離が速度になる
+// ドラッグを画面端で保持すると一覧がスクロールし続ける、あの挙動と同じ。
+const SCRUB_DEADZONE  = 60; // 直接操作でいられる範囲（押した位置からのpx）
+const SCRUB_DIRECT_PX = 16; // 直接操作の感度（この px 動かすと1枚進む）
+const SCRUB_RAMP      = 100; // 不感帯を出てからこの px で最高速に達する
+const SCRUB_SPEED_MIN = 2;  // 自動送りの下限速度（枚/秒）
+const SCRUB_SPEED_MAX = 16; // 自動送りの上限速度（枚/秒）
 
-// pointermove の連打を 1フレーム1回に間引く（イベント頻度と実処理を分離）
-function scheduleScrub() {
-  if (scrubRaf !== null) return;
-  scrubRaf = requestAnimationFrame(() => {
-    scrubRaf = null;
-    if (scrubTargetIdx !== null) navigateTo(scrubTargetIdx);
-  });
-}
+let scrubbing = false;
+let scrubAnchorX = 0;    // 押した位置。不感帯はここを中心に固定される
+let scrubAnchorIdx = 0;  // 直接操作の基準カード。自動送りを抜けるたび取り直す
+let scrubPos = 0;        // 小数の現在位置（自動送りはここに速度を積む）
+let scrubLastX = 0;
+let scrubAuto = false;
+let scrubMaxIdx = 0;
+let scrubRaf = null, scrubPrevTs = 0;
 
 function cacheScrubGeometry() {
-  const dots = navDots.querySelectorAll('.dot');
-  scrubCount = dots.length;
-  if (scrubCount === 0) return;
-  const firstR = dots[0].getBoundingClientRect();
-  const lastR  = dots[scrubCount - 1].getBoundingClientRect();
-  scrubFirstC = firstR.left + firstR.width / 2;
-  scrubLastC  = lastR.left + lastR.width / 2;
+  scrubMaxIdx = navDotsTrack.children.length - 1;
 }
 
-function scrubIndexFromX(clientX) {
-  if (scrubCount <= 1) return 0;
-  const span = scrubLastC - scrubFirstC;
-  const ratio = span === 0 ? 0 : (clientX - scrubFirstC) / span;
-  const idx = Math.round(ratio * (scrubCount - 1));
-  return Math.max(0, Math.min(scrubCount - 1, idx));
+// 押した瞬間だけは、指の真下にあるドットへジャンプする（従来のタップ移動）。
+// active ドットだけ幅が広く間隔が不均一なので、中心座標の最近傍で判定する。
+function nearestDotIndex(clientX) {
+  const dots = navDotsTrack.children;
+  let best = 0, bestDist = Infinity;
+  for (let i = 0; i < dots.length; i++) {
+    const r = dots[i].getBoundingClientRect();
+    const dist = Math.abs(clientX - (r.left + r.width / 2));
+    if (dist < bestDist) { bestDist = dist; best = i; }
+  }
+  return best;
+}
+
+// 指が止まっていても自動送りを進める必要があるので、なぞっている間ずっと回す。
+function scrubFrame(ts) {
+  if (!scrubbing) { scrubRaf = null; return; }
+  const dt = scrubPrevTs ? Math.min(0.05, (ts - scrubPrevTs) / 1000) : 0; // 復帰直後の飛びを抑える
+  scrubPrevTs = ts;
+
+  const delta = scrubLastX - scrubAnchorX;
+  const over  = Math.abs(delta) - SCRUB_DEADZONE;
+
+  if (over > 0) {
+    scrubAuto = true;
+    const ratio = Math.min(1, over / SCRUB_RAMP);
+    const speed = SCRUB_SPEED_MIN + (SCRUB_SPEED_MAX - SCRUB_SPEED_MIN) * ratio;
+    scrubPos += Math.sign(delta) * speed * dt;
+  } else {
+    // 自動送りから戻ってきた瞬間に基準を取り直す。
+    // これをしないと、送った分を無視して押した位置の近くへ引き戻される。
+    if (scrubAuto) {
+      scrubAuto = false;
+      scrubAnchorIdx = scrubPos - delta / SCRUB_DIRECT_PX;
+    }
+    scrubPos = scrubAnchorIdx + delta / SCRUB_DIRECT_PX;
+  }
+
+  scrubPos = Math.max(0, Math.min(scrubMaxIdx, scrubPos)); // 端で速度を溜め込ませない
+  navigateTo(Math.round(scrubPos));
+  scrubRaf = requestAnimationFrame(scrubFrame);
 }
 
 navDots.addEventListener('pointerdown', e => {
   if (current === SPECIAL_IDX && !revealDone) return; // reveal前はドット無し
-  if (!navDots.querySelector('.dot')) return;
+  if (!navDotsTrack.children.length) return;
   e.preventDefault();
   e.stopPropagation();
   scrubbing = true;
   motionActive = true;              // 動作中：画像読み込みを止める
+  navDots.classList.add('scrubbing');
   navDots.setPointerCapture(e.pointerId);
   cacheScrubGeometry();
-  scrubTargetIdx = scrubIndexFromX(e.clientX);
-  scheduleScrub();
+  scrubAnchorX = scrubLastX = e.clientX;
+  scrubAnchorIdx = scrubPos = nearestDotIndex(e.clientX);
+  scrubAuto = false;
+  scrubPrevTs = 0;
+  navigateTo(Math.round(scrubPos)); // タップした点へジャンプ
+  if (scrubRaf === null) scrubRaf = requestAnimationFrame(scrubFrame);
 });
 
 navDots.addEventListener('pointermove', e => {
   if (!scrubbing) return;
   e.preventDefault();
-  scrubTargetIdx = scrubIndexFromX(e.clientX);
-  scheduleScrub();
+  scrubLastX = e.clientX;           // 実際の移動は scrubFrame が処理する
 });
 
 function endScrub(e) {
   if (!scrubbing) return;
   scrubbing = false;
+  navDots.classList.remove('scrubbing');
   if (scrubRaf !== null) { cancelAnimationFrame(scrubRaf); scrubRaf = null; }
-  if (scrubTargetIdx !== null) { navigateTo(scrubTargetIdx); scrubTargetIdx = null; }
   motionActive = false;             // 停止：ウィンドウ内の画像をまとめて読み込む
   loadNearImages();
   applyCenterHiRes();               // 停止した中央カードを高画質化
@@ -946,6 +1022,9 @@ function endScrub(e) {
 }
 navDots.addEventListener('pointerup', endScrub);
 navDots.addEventListener('pointercancel', endScrub);
+
+window.addEventListener('resize', applyDotsWindow);
+applyDotsWindow();
 
 function triggerReveal() {
   if (revealing || revealDone) return;
