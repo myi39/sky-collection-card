@@ -8,3 +8,6 @@ images/card_front/raw/
 
 # 裏画像の元データ（ローカルバックアップ。トリミング版は _trim_back.py で生成）
 images/card_back/raw/
+
+# ネットプリント画像の元データ（ローカルバックアップ。表示用は net_print/ と net_print_hi/）
+images/net_print/raw/

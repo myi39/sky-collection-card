@@ -109,12 +109,16 @@ ffmpeg -ss 10.5 -t 17.5 -i movies/心音.mp4 \
 
 #### 待機対象
 
+各ディレクトリに39ファイルあるが、HTMLから実際に参照されるのは **37枚**（`players` 36件 + 特殊カード `00_&You1`）。`00_&I表` と `00_&You2` は未参照の残存アセットのため先読み対象に含めない。
+
 | 対象 | 枚数 | サイズ | 方式 |
 |---|---|---|---|
-| `images/card_front/*.jpg` | 39 | 3.37MB | `loadAllFronts()` の完走を待つ（常駐デコードあり） |
-| `images/card_back_lo/*.png` | 39 | 1.87MB | `fetch()` でキャッシュ充填のみ |
-| `images/card_back/*.png` | 39 | 2.71MB | `fetch()` でキャッシュ充填のみ |
-| **合計** | | **7.95MB** | |
+| `images/card_front/*.jpg` | 37 | 3.20MB | `loadAllFronts()` の完走を待つ（常駐デコードあり） |
+| `images/card_back/*.png` | 37 | 2.55MB | `fetch()` でキャッシュ充填のみ |
+| `images/card_back_lo/*.png` | 37 | 1.80MB | `fetch()` でキャッシュ充填のみ |
+| **合計** | | **7.55MB** | |
+
+`fetch()` するのは裏の2種＝**74リクエスト / 4.35MB**。パスは `players[]` から導出する（読み込み時に `normalize('NFD')` 済みのため、正規化を自動的に引き継げる）。
 
 #### 先読みの実行条件
 

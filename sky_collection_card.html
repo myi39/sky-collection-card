@@ -81,7 +81,6 @@ window.dispatchEvent(new Event('three-ready'));
     font-weight: 500;
     letter-spacing: 0.14em;
     color: rgba(255,255,255,0.5);
-    text-transform: uppercase;
   }
 
 
@@ -112,7 +111,9 @@ window.dispatchEvent(new Event('three-ready'));
   .card-slot {
     flex: 0 0 auto;
     transition: transform 0.5s cubic-bezier(0.25,0.1,0.25,1), opacity 0.5s;
-    perspective: 900px;
+    /* カード幅(240〜340px)の約2倍。900px だと投影がほぼ正射影になり、単発の半回転では
+       回転方向の手がかりが消えて逆回転に見えることがある（回転する影絵と同じ錯視）。 */
+    perspective: 640px;
   }
 
   .card-slot.center { transform: scale(1.0); opacity: 1; z-index: 10; }
@@ -135,7 +136,6 @@ window.dispatchEvent(new Event('three-ready'));
     border-radius: 11px;
     backface-visibility: hidden;
     overflow: hidden;
-    border: 0.5px solid rgba(255,255,255,0.1);
   }
 
   .card-back {
@@ -207,7 +207,10 @@ window.dispatchEvent(new Event('three-ready'));
     min-height: 80px;
   }
 
-  .info-name { font-size: 20px; font-weight: 500; color: rgba(255,255,255,0.9); letter-spacing: -0.01em; margin-bottom: 6px; font-family: Papyrus, fantasy; }
+  /* word-spacing は半角スペースの幅だけを広げる（letter-spacing と違い文字間には効かない）。
+     "No.1 Mob" の番号と名前を離すのが目的。全角スペースを使わないのは、Papyrus に U+3000 が
+     無く端末のCJKフォントへフォールバックして幅が env ごとにばらつくため。 */
+  .info-name { font-size: 20px; font-weight: 500; color: rgba(255,255,255,0.9); letter-spacing: -0.01em; word-spacing: 0.4em; margin-bottom: 6px; font-family: Papyrus, fantasy; }
   .info-desc { font-size: 13px; color: rgba(255,255,255,0.36); letter-spacing: 0.02em; line-height: 1.65; font-family: Papyrus, fantasy; }
 
   .bgm-btn {
@@ -218,15 +221,23 @@ window.dispatchEvent(new Event('three-ready'));
     background: rgba(255,255,255,0.05);
     border: 0.5px solid rgba(255,255,255,0.12);
     border-radius: 16px;
-    padding: 5px 11px;
+    padding: 7px;
     color: rgba(255,255,255,0.28);
-    font-size: 10px;
-    letter-spacing: 0.12em;
+    display: grid;
+    place-items: center;
     cursor: pointer;
     transition: background 0.3s, color 0.3s, opacity 0.3s;
     user-select: none;
   }
   .bgm-btn:hover { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.55); }
+
+  /* Lucide の volume-2（音あり）/ volume-off（音なし）。
+     stroke="currentColor" なので .bgm-btn の color がそのまま効く。
+     表示するのは「現在の状態」で、押した後どうなるかではない。 */
+  .bgm-btn svg { display: block; width: 16px; height: 16px; }
+  .bgm-btn .icon-sound-off { display: none; }
+  .bgm-btn.is-muted .icon-sound-on { display: none; }
+  .bgm-btn.is-muted .icon-sound-off { display: block; }
 
   .flip-hint { font-size: 11px; color: rgba(255,255,255,0.16); letter-spacing: 0.08em; text-align: center; margin: 12px 0 4px; position: relative; z-index: 5; }
 
@@ -444,13 +455,130 @@ window.dispatchEvent(new Event('three-ready'));
   animation: planAResetAppear 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   pointer-events: auto !important;
 }
+
+/* ─── ローディング画面 ─────────────────────────────────── */
+/* z-index: .bgm-btn=200 / #modal-3d=300 なので、オーバーレイは 500、
+   ローディング中だけ前面に出すボタンは 600 を使う。
+   入口の扉 #sound-gate は、そのすべての上に出すため 700。 */
+#loading-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  background: #080810;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 1;
+  transition: opacity 0.6s ease;
+}
+#loading-overlay.done { opacity: 0; pointer-events: none; }
+
+/* 静止画を既定で見せ、実際に再生が始まってから動画へ切り替える。
+   iOS は自動再生がブロックされると再生ボタンを描き、CSS では隠せない
+   （WebKit Bug 219889, RESOLVED WONTFIX）。「再生できなければ隠す」だと
+   JS が気づくまでの一瞬ボタンが見えるため、「始まるまで出さない」にしている。 */
+#loading-media {
+  position: relative;
+  width: 100%;
+  max-width: 700px;
+}
+#loading-video,
+#loading-still {
+  display: block;
+  width: 100%;
+  height: auto;
+  mix-blend-mode: screen;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+#loading-video { opacity: 0; }
+#loading-still { position: absolute; inset: 0; height: 100%; opacity: 1; }
+#loading-media.playing #loading-video { opacity: 1; }
+#loading-media.playing #loading-still { opacity: 0; }
+
+/* ローディング中だけ音ボタンをオーバーレイより前面へ（Task 5 で付与）。
+   平常時の 200 は変えない（3Dモーダル 300 の背後に隠れる既存挙動を保つため）。 */
+.bgm-btn.over-loading { z-index: 600; }
+
+/* 本編の隠蔽は opacity で行う。display:none にすると
+   adjustTranslate() が参照する offsetWidth が 0 になり中央位置が壊れる。
+   .site-frame に transform を付けないこと（内側の #modal-3d が position:fixed のため）。 */
+.site-frame {
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+.site-frame.revealed { opacity: 1; }
+
+.carousel-wrap {
+  transform: scale(1.04);
+  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.carousel-wrap.revealed { transform: scale(1); }
+
+/* ─── 音の扉（入口）───────────────────────────────────── */
+/* ローディング(500)・ローディング中のボタン(600)より上の 700。
+   背景色は #loading-overlay と同一にして、OK後の暗転に継ぎ目を作らない。 */
+#sound-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 700;
+  background: #080810;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0 24px;
+  text-align: center;
+  opacity: 1;
+  transition: opacity 0.4s ease;
+  /* Papyrus は日本語グリフを持たないため扉には使えない。
+     指定しないとフォールバック任せになるので、システムUIを明示する。 */
+  font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans",
+               "Noto Sans JP", "Yu Gothic", sans-serif;
+}
+#sound-gate.done { opacity: 0; pointer-events: none; }
+
+/* 主文で事実を伝え、操作の説明は一回り小さく淡く下に置く。 */
+#sound-gate-title {
+  font-size: 15px;
+  color: rgba(255,255,255,0.75);
+  letter-spacing: 0.08em;
+  line-height: 1.8;
+}
+#sound-gate-note {
+  margin-top: 14px;
+  font-size: 11px;
+  color: rgba(255,255,255,0.32);
+  letter-spacing: 0.08em;
+  line-height: 1.8;
+}
+
+/* .bgm-btn と同じ質感を一回り大きくしたもの。 */
+#sound-gate-ok {
+  margin-top: 32px;
+  background: rgba(255,255,255,0.05);
+  border: 0.5px solid rgba(255,255,255,0.12);
+  border-radius: 20px;
+  padding: 10px 40px;
+  color: rgba(255,255,255,0.6);
+  font-family: inherit;
+  font-size: 13px;
+  letter-spacing: 0.16em;
+  cursor: pointer;
+  transition: background 0.3s, color 0.3s;
+}
+#sound-gate-ok:hover { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.85); }
+#sound-gate-ok:focus-visible { outline: 1px solid rgba(255,255,255,0.5); outline-offset: 3px; }
+
+/* 扉の表示中は背後をスクロールさせない（Task 2 の OK で除去する）。 */
+html.gate-open, html.gate-open body { overflow: hidden; }
 </style>
 
 <div class="site-frame">
   <div class="sky-bg"><div class="stars" id="stars"></div></div>
 
   <nav class="nav">
-    <div class="nav-logo">Collection Card</div>
+    <div class="nav-logo">#skyairraceCC</div>
   </nav>
 
   <div class="carousel-wrap">
@@ -463,15 +591,14 @@ window.dispatchEvent(new Event('three-ready'));
              style="width:var(--card-w); height:var(--card-h); border-radius:11px;
                     position:relative; transform-style:preserve-3d; transform:rotateY(0deg);">
           <div style="position:absolute;inset:0;border-radius:11px;overflow:hidden;
-                      backface-visibility:hidden;border:0.5px solid rgba(255,255,255,0.12);">
-            <img src="images/card_front/00_%26You1_front.jpg"
+                      backface-visibility:hidden;">
+            <img src="images/card_front/30_Mirai_front.jpg"
                  style="width:100%;height:100%;object-fit:contain;display:block;"
                  draggable="false">
           </div>
           <div style="position:absolute;inset:0;border-radius:11px;overflow:hidden;
-                      backface-visibility:hidden;transform:rotateY(180deg);
-                      border:0.5px solid rgba(255,255,255,0.1);">
-            <img src="images/card_back/00_%26You1_back.png"
+                      backface-visibility:hidden;transform:rotateY(180deg);">
+            <img src="images/card_back/30_Mirai_back.png"
                  style="width:100%;height:100%;object-fit:cover;display:block;"
                  draggable="false">
           </div>
@@ -488,7 +615,7 @@ window.dispatchEvent(new Event('three-ready'));
     <div class="nav-dots" id="navDots"></div>
   </div>
 
-  <div class="footer-line">sky airrace collection card project</div>
+  <div class="footer-line">SKYAIRRACE Collectible Cards project</div>
   <div id="modal-3d">
     <button class="modal-3d-close" id="modal3dClose">✕</button>
     <div id="modal-3d-wrap">
@@ -500,59 +627,130 @@ window.dispatchEvent(new Event('three-ready'));
   </div>
 </div>
 
-<audio id="bgm" src="bgm/蒼穹.mp3" loop preload="auto"></audio>
-<button class="bgm-btn" id="bgmBtn">♪ MUTE</button>
+<div id="loading-overlay">
+  <div id="loading-media">
+    <video id="loading-video" src="movies/heartbeat_loop.mp4"
+           muted playsinline autoplay loop preload="auto"></video>
+    <img id="loading-still" src="movies/heartbeat_poster.jpg" alt="">
+  </div>
+</div>
+
+<div id="sound-gate">
+  <p id="sound-gate-title">このサイトでは音が流れます</p>
+  <p id="sound-gate-note">左下で音声切り替えができます</p>
+  <button id="sound-gate-ok" type="button">OK</button>
+</div>
+<script>document.documentElement.classList.add('gate-open');</script>
+
+<!-- 蒼穹_soft.mp3 は原本を -12dB したもの（原本 bgm/蒼穹.mp3 は保持）。
+     iOS Safari は volume の指定を無視するため、コード側で音量を絞っても効かない。
+     素材そのものを下げるのが全環境で効く唯一の方法。生成コマンド:
+     ffmpeg -i "bgm/蒼穹.mp3" -af "volume=-12dB" -c:a libmp3lame -b:a 128k "bgm/蒼穹_soft.mp3" -->
+<audio id="bgm" src="bgm/蒼穹_soft.mp3" loop preload="none"></audio>
+<button class="bgm-btn is-muted" id="bgmBtn" type="button" aria-label="音を出す">
+  <svg class="icon-sound-on" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+       viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+       stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z"/>
+    <path d="M16 9a5 5 0 0 1 0 6"/>
+    <path d="M19.364 18.364a9 9 0 0 0 0-12.728"/>
+  </svg>
+  <svg class="icon-sound-off" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+       viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+       stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M16 9a5 5 0 0 1 .95 2.293"/>
+    <path d="M19.364 5.636a9 9 0 0 1 1.889 9.96"/>
+    <path d="m2 2 20 20"/>
+    <path d="m7 7-.587.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298V11"/>
+    <path d="M9.828 4.172A.686.686 0 0 1 11 4.657v.686"/>
+  </svg>
+</button>
 
 <script>
-const players = [
-  { num:"01", name:"01", desc:"Sample text goes here for this card", frontImg:"images/card_front/01_Mob_front.jpg",          backImg:"images/card_back/01_Mob_back.png",          modelSrc:"3d/01_Mob.glb" },
-  { num:"02", name:"02", desc:"Sample text goes here for this card", frontImg:"images/card_front/02_P_front.jpg",            backImg:"images/card_back/02_P_back.png",            modelSrc:"3d/02_P.glb" },
-  { num:"03", name:"03", desc:"Sample text goes here for this card", frontImg:"images/card_front/03_ohwata_front.jpg",       backImg:"images/card_back/03_ohwata_back.png",       modelSrc:"3d/03_ohwata.glb" },
-  { num:"04", name:"04", desc:"Sample text goes here for this card", frontImg:"images/card_front/04_Yoshidamochi_front.jpg", backImg:"images/card_back/04_Yoshidamochi_back.png", modelSrc:"3d/04_Yoshidamochi.glb" },
-  { num:"05", name:"05", desc:"Sample text goes here for this card", frontImg:"images/card_front/05_TeDekao_front.jpg",      backImg:"images/card_back/05_TeDekao_back.png",      modelSrc:"3d/05_TeDekao.glb" },
-  { num:"06", name:"06", desc:"Sample text goes here for this card", frontImg:"images/card_front/06_Syouta_front.jpg",       backImg:"images/card_back/06_Syouta_back.png",       modelSrc:"3d/06_Syouta.glb" },
-  { num:"07", name:"07", desc:"Sample text goes here for this card", frontImg:"images/card_front/07_Natori_front.jpg",       backImg:"images/card_back/07_Natori_back.png",       modelSrc:"3d/07_Natori.glb" },
-  { num:"08", name:"08", desc:"Sample text goes here for this card", frontImg:"images/card_front/08_kuni_front.jpg",         backImg:"images/card_back/08_kuni_back.png",         modelSrc:"3d/08_kuni.glb" },
-  { num:"09", name:"09", desc:"Sample text goes here for this card", frontImg:"images/card_front/09_Yuki_front.jpg",         backImg:"images/card_back/09_Yuki_back.png",         modelSrc:"3d/09_Yuki.glb" },
-  { num:"10", name:"10", desc:"Sample text goes here for this card", frontImg:"images/card_front/10_swindler_front.jpg",     backImg:"images/card_back/10_swindler_back.png",     modelSrc:"3d/10_swindler.glb" },
-  { num:"11", name:"11", desc:"Sample text goes here for this card", frontImg:"images/card_front/11_Piano_front.jpg",        backImg:"images/card_back/11_Piano_back.png",        modelSrc:"3d/11_Piano.glb" },
-  { num:"12", name:"12", desc:"Sample text goes here for this card", frontImg:"images/card_front/12_shika_front.jpg",        backImg:"images/card_back/12_shika_back.png",        modelSrc:"3d/12_shika.glb" },
-  { num:"13", name:"13", desc:"Sample text goes here for this card", frontImg:"images/card_front/13_Cocha_front.jpg",        backImg:"images/card_back/13_Cocha_back.png",        modelSrc:"3d/13_Cocha.glb" },
-  { num:"14", name:"14", desc:"Sample text goes here for this card", frontImg:"images/card_front/14_tokiu_front.jpg",        backImg:"images/card_back/14_tokiu_back.png",        modelSrc:"3d/14_tokiu.glb" },
-  { num:"15", name:"15", desc:"Sample text goes here for this card", frontImg:"images/card_front/15_Remyi_front.jpg",        backImg:"images/card_back/15_Remyi_back.png",        modelSrc:"3d/15_Remyi.glb" },
-  { num:"16", name:"16", desc:"Sample text goes here for this card", frontImg:"images/card_front/16_Gomasan_front.jpg",      backImg:"images/card_back/16_Gomasan_back.png",      modelSrc:"3d/16_Gomasan.glb" },
-  { num:"17", name:"17", desc:"Sample text goes here for this card", frontImg:"images/card_front/17_sakura_front.jpg",       backImg:"images/card_back/17_sakura_back.png",       modelSrc:"3d/17_sakura.glb" },
-  { num:"18", name:"18", desc:"Sample text goes here for this card", frontImg:"images/card_front/18_Syacho_front.jpg",       backImg:"images/card_back/18_Syacho_back.png",       modelSrc:"3d/18_Syacho.glb" },
-  { num:"19", name:"19", desc:"Sample text goes here for this card", frontImg:"images/card_front/19_moi_front.jpg",          backImg:"images/card_back/19_moi_back.png",          modelSrc:"3d/19_moi.glb" },
-  { num:"20", name:"20", desc:"Sample text goes here for this card", frontImg:"images/card_front/20_maki_front.jpg",         backImg:"images/card_back/20_maki_back.png",         modelSrc:"3d/20_maki.glb" },
-  { num:"21", name:"21", desc:"Sample text goes here for this card", frontImg:"images/card_front/21_sima_front.jpg",         backImg:"images/card_back/21_sima_back.png",         modelSrc:"3d/21_sima.glb" },
-  { num:"22", name:"22", desc:"Sample text goes here for this card", frontImg:"images/card_front/22_Kto_front.jpg",          backImg:"images/card_back/22_Kto_back.png",          modelSrc:"3d/22_Kto.glb" },
-  { num:"23", name:"23", desc:"Sample text goes here for this card", frontImg:"images/card_front/23_carrot_front.jpg",       backImg:"images/card_back/23_carrot_back.png",       modelSrc:"3d/23_carrot.glb" },
-  { num:"24", name:"24", desc:"Sample text goes here for this card", frontImg:"images/card_front/24_toranoko_front.jpg",     backImg:"images/card_back/24_toranoko_back.png",     modelSrc:"3d/24_toranoko.glb" },
-  { num:"25", name:"25", desc:"Sample text goes here for this card", frontImg:"images/card_front/25_hal_front.jpg",          backImg:"images/card_back/25_hal_back.png",          modelSrc:"3d/25_hal.glb" },
-  { num:"26", name:"26", desc:"Sample text goes here for this card", frontImg:"images/card_front/26_Motida_front.jpg",       backImg:"images/card_back/26_Motida_back.png",       modelSrc:"3d/26_Motida.glb" },
-  { num:"27", name:"27", desc:"Sample text goes here for this card", frontImg:"images/card_front/27_sorairo_front.jpg",      backImg:"images/card_back/27_sorairo_back.png",      modelSrc:"3d/27_sorairo.glb" },
-  { num:"28", name:"28", desc:"Sample text goes here for this card", frontImg:"images/card_front/28_Ten_front.jpg",          backImg:"images/card_back/28_Ten_back.png",          modelSrc:"3d/28_Ten.glb" },
-  { num:"29", name:"29", desc:"Sample text goes here for this card", frontImg:"images/card_front/29_Hachiya_front.jpg",      backImg:"images/card_back/29_Hachiya_back.png",      modelSrc:"3d/29_Hachiya.glb" },
-  { num:"30", name:"30", desc:"Sample text goes here for this card", frontImg:"images/card_front/30_Mirai_front.jpg",        backImg:"images/card_back/30_Mirai_back.png",        modelSrc:"3d/30_Mirai.glb" },
-  { num:"31", name:"31", desc:"Sample text goes here for this card", frontImg:"images/card_front/31_Corno_front.jpg",        backImg:"images/card_back/31_Corno_back.png",        modelSrc:"3d/31_Corno.glb" },
-  { num:"32", name:"32", desc:"Sample text goes here for this card", frontImg:"images/card_front/32_Ray_front.jpg",          backImg:"images/card_back/32_Ray_back.png",          modelSrc:"3d/32_Ray.glb" },
-  { num:"33", name:"33", desc:"Sample text goes here for this card", frontImg:"images/card_front/33_Kotori_front.jpg",       backImg:"images/card_back/33_Kotori_back.png",       modelSrc:"3d/33_Kotori.glb" },
-  { num:"34", name:"34", desc:"Sample text goes here for this card", frontImg:"images/card_front/34_Yamukumi_front.jpg",     backImg:"images/card_back/34_Yamukumi_back.png",     modelSrc:"3d/34_Yamukumi.glb" },
-  { num:"35", name:"35", desc:"Sample text goes here for this card", frontImg:"images/card_front/35_odenchi_front.jpg",      backImg:"images/card_back/35_odenchi_back.png",      modelSrc:"3d/35_odenchi.glb" },
-  { num:"36", name:"36", desc:"Sample text goes here for this card", frontImg:"images/card_front/36_kyohe_front.jpg",        backImg:"images/card_back/36_kyohe_back.png",        modelSrc:"3d/36_kyohe.glb" },
+// 最終保険: 何らかの理由で revealSite() に到達できなくても本編を必ず出す。
+// .site-frame は opacity:0 で隠れており入場手段が他に無いため、
+// ここに到達できないと画面が永久に真っ黒になる。
+// 通常経路の最悪ケース = LOADING_ASSET_WAIT_MS(2000) + LOADING_MAX_MS(60000)
+// + 拍のピーク待ち(最大 BEAT_PERIOD=3500) = 65500ms。
+// これより後に発火しないとフェイルセーフが正常経路を追い越してしまうため 70000。
+//
+// 起動は扉の OK 後（armLoadingFailsafe の呼び出し）。ページ読込から数えると、
+// 扉を開いたまま放置した人の裏で本編が現れ、扉を閉じたら既に一覧、という壊れ方をする。
+const LOADING_FAILSAFE_MS = 70000;
+function armLoadingFailsafe() {
+  setTimeout(() => {
+    document.querySelector('.site-frame')?.classList.add('revealed');
+    document.querySelector('.carousel-wrap')?.classList.add('revealed');
+    document.getElementById('loading-overlay')?.remove();
+  }, LOADING_FAILSAFE_MS);
+}
+
+// 一覧に並ぶカードの全定義。LOCKED_FROM 以降（No.30〜36・&You・告知2枚）は最初は伏せられており、
+// ゴーストスロットの演出（triggerReveal）が終わった時点で players へ合流して39枚になる。
+// desc は今のところ全て空。文言が決まったらここへ入れれば info-panel に出る。
+const ALL_PLAYERS = [
+  { num:"01", name:"No.1 Mob",           desc:"", frontImg:"images/card_front/01_Mob_front.jpg",           backImg:"images/card_back/01_Mob_back.png",           modelSrc:"3d/01_Mob.glb" },
+  { num:"02", name:"No.2 P",             desc:"", frontImg:"images/card_front/02_P_front.jpg",             backImg:"images/card_back/02_P_back.png",             modelSrc:"3d/02_P.glb" },
+  { num:"03", name:"No.3 ohwata",        desc:"", frontImg:"images/card_front/03_ohwata_front.jpg",        backImg:"images/card_back/03_ohwata_back.png",        modelSrc:"3d/03_ohwata.glb" },
+  { num:"04", name:"No.4 Yoshidamochi",  desc:"", frontImg:"images/card_front/04_Yoshidamochi_front.jpg",  backImg:"images/card_back/04_Yoshidamochi_back.png",  modelSrc:"3d/04_Yoshidamochi.glb" },
+  { num:"05", name:"No.5 TeDekao",       desc:"", frontImg:"images/card_front/05_TeDekao_front.jpg",       backImg:"images/card_back/05_TeDekao_back.png",       modelSrc:"3d/05_TeDekao.glb" },
+  { num:"06", name:"No.6 Syouta",        desc:"", frontImg:"images/card_front/06_Syouta_front.jpg",        backImg:"images/card_back/06_Syouta_back.png",        modelSrc:"3d/06_Syouta.glb" },
+  { num:"07", name:"No.7 Natori",        desc:"", frontImg:"images/card_front/07_Natori_front.jpg",        backImg:"images/card_back/07_Natori_back.png",        modelSrc:"3d/07_Natori.glb" },
+  { num:"08", name:"No.8 kuni",          desc:"", frontImg:"images/card_front/08_kuni_front.jpg",          backImg:"images/card_back/08_kuni_back.png",          modelSrc:"3d/08_kuni.glb" },
+  { num:"09", name:"No.9 Yuki",          desc:"", frontImg:"images/card_front/09_Yuki_front.jpg",          backImg:"images/card_back/09_Yuki_back.png",          modelSrc:"3d/09_Yuki.glb" },
+  { num:"10", name:"No.10 swindler",     desc:"", frontImg:"images/card_front/10_swindler_front.jpg",      backImg:"images/card_back/10_swindler_back.png",      modelSrc:"3d/10_swindler.glb" },
+  { num:"11", name:"No.11 Piano",        desc:"", frontImg:"images/card_front/11_Piano_front.jpg",         backImg:"images/card_back/11_Piano_back.png",         modelSrc:"3d/11_Piano.glb" },
+  { num:"12", name:"No.12 shika",        desc:"", frontImg:"images/card_front/12_shika_front.jpg",         backImg:"images/card_back/12_shika_back.png",         modelSrc:"3d/12_shika.glb" },
+  { num:"13", name:"No.13 Cocha",        desc:"", frontImg:"images/card_front/13_Cocha_front.jpg",         backImg:"images/card_back/13_Cocha_back.png",         modelSrc:"3d/13_Cocha.glb" },
+  { num:"14", name:"No.14 tokiu",        desc:"", frontImg:"images/card_front/14_tokiu_front.jpg",         backImg:"images/card_back/14_tokiu_back.png",         modelSrc:"3d/14_tokiu.glb" },
+  { num:"15", name:"No.15 Remyi",        desc:"", frontImg:"images/card_front/15_Remyi_front.jpg",         backImg:"images/card_back/15_Remyi_back.png",         modelSrc:"3d/15_Remyi.glb" },
+  { num:"16", name:"No.16 Gomasan",      desc:"", frontImg:"images/card_front/16_Gomasan_front.jpg",       backImg:"images/card_back/16_Gomasan_back.png",       modelSrc:"3d/16_Gomasan.glb" },
+  { num:"17", name:"No.17 sakura",       desc:"", frontImg:"images/card_front/17_sakura_front.jpg",        backImg:"images/card_back/17_sakura_back.png",        modelSrc:"3d/17_sakura.glb" },
+  { num:"18", name:"No.18 Syacho",       desc:"", frontImg:"images/card_front/18_Syacho_front.jpg",        backImg:"images/card_back/18_Syacho_back.png",        modelSrc:"3d/18_Syacho.glb" },
+  { num:"19", name:"No.19 moi",          desc:"", frontImg:"images/card_front/19_moi_front.jpg",           backImg:"images/card_back/19_moi_back.png",           modelSrc:"3d/19_moi.glb" },
+  { num:"20", name:"No.20 maki",         desc:"", frontImg:"images/card_front/20_maki_front.jpg",          backImg:"images/card_back/20_maki_back.png",          modelSrc:"3d/20_maki.glb" },
+  { num:"21", name:"No.21 sima",         desc:"", frontImg:"images/card_front/21_sima_front.jpg",          backImg:"images/card_back/21_sima_back.png",          modelSrc:"3d/21_sima.glb" },
+  { num:"22", name:"No.22 Kto",          desc:"", frontImg:"images/card_front/22_Kto_front.jpg",           backImg:"images/card_back/22_Kto_back.png",           modelSrc:"3d/22_Kto.glb" },
+  { num:"23", name:"No.23 carrot",       desc:"", frontImg:"images/card_front/23_carrot_front.jpg",        backImg:"images/card_back/23_carrot_back.png",        modelSrc:"3d/23_carrot.glb" },
+  { num:"24", name:"No.24 toranoko",     desc:"", frontImg:"images/card_front/24_toranoko_front.jpg",      backImg:"images/card_back/24_toranoko_back.png",      modelSrc:"3d/24_toranoko.glb" },
+  { num:"25", name:"No.25 hal",          desc:"", frontImg:"images/card_front/25_hal_front.jpg",           backImg:"images/card_back/25_hal_back.png",           modelSrc:"3d/25_hal.glb" },
+  { num:"26", name:"No.26 Motida",       desc:"", frontImg:"images/card_front/26_Motida_front.jpg",        backImg:"images/card_back/26_Motida_back.png",        modelSrc:"3d/26_Motida.glb" },
+  { num:"27", name:"No.27 sorairo",      desc:"", frontImg:"images/card_front/27_sorairo_front.jpg",       backImg:"images/card_back/27_sorairo_back.png",       modelSrc:"3d/27_sorairo.glb" },
+  { num:"28", name:"No.28 Ten",          desc:"", frontImg:"images/card_front/28_Ten_front.jpg",           backImg:"images/card_back/28_Ten_back.png",           modelSrc:"3d/28_Ten.glb" },
+  { num:"29", name:"No.29 Hachiya",      desc:"", frontImg:"images/card_front/29_Hachiya_front.jpg",       backImg:"images/card_back/29_Hachiya_back.png",       modelSrc:"3d/29_Hachiya.glb" },
+  { num:"30", name:"No.30 Mirai",        desc:"", frontImg:"images/card_front/30_Mirai_front.jpg",         backImg:"images/card_back/30_Mirai_back.png",         modelSrc:"3d/30_Mirai.glb" },
+  { num:"31", name:"No.31 Corno",        desc:"", frontImg:"images/card_front/31_Corno_front.jpg",         backImg:"images/card_back/31_Corno_back.png",         modelSrc:"3d/31_Corno.glb" },
+  { num:"32", name:"No.32 Ray",          desc:"", frontImg:"images/card_front/32_Ray_front.jpg",           backImg:"images/card_back/32_Ray_back.png",           modelSrc:"3d/32_Ray.glb" },
+  { num:"33", name:"No.33 Kotori",       desc:"", frontImg:"images/card_front/33_Kotori_front.jpg",        backImg:"images/card_back/33_Kotori_back.png",        modelSrc:"3d/33_Kotori.glb" },
+  { num:"34", name:"No.34 Yamukumi",     desc:"", frontImg:"images/card_front/34_Yamukumi_front.jpg",      backImg:"images/card_back/34_Yamukumi_back.png",      modelSrc:"3d/34_Yamukumi.glb" },
+  { num:"35", name:"No.35 odenchi",      desc:"", frontImg:"images/card_front/35_odenchi_front.jpg",       backImg:"images/card_back/35_odenchi_back.png",       modelSrc:"3d/35_odenchi.glb" },
+  { num:"36", name:"No.36 kyohe",        desc:"", frontImg:"images/card_front/36_kyohe_front.jpg",         backImg:"images/card_back/36_kyohe_back.png",         modelSrc:"3d/36_kyohe.glb" },
+  // modelSrc なし = 3Dデータが無いカード。「3D で見る」ボタンは生成されない。
+  // glb を用意したら modelSrc を書き足すだけでボタンが復活する。
+  { num:"00", name:"No.X &You",          desc:"", frontImg:"images/card_front/00_%26You2_front.jpg",       backImg:"images/card_back/00_%26You2_back.png" },
+  // backImg なし = 裏面を持たないカード。buildCard がフリップ面ごと作らず、タップしてもめくれない。
+  // frontHiImg は中央表示用の高画質版（他カードの card_front_hi/ に相当）。
+  { num:"NP1", name:"Vol.1", desc:"", frontImg:"images/net_print/group1.jpg", frontHiImg:"images/net_print_hi/group1.jpg" },
+  { num:"NP2", name:"Vol.2", desc:"", frontImg:"images/net_print/group2.jpg", frontHiImg:"images/net_print_hi/group2.jpg" },
 ];
+
+// 演出前に見せる枚数（= No.30 のインデックス）。ゴーストスロットもこの位置に立つ。
+const LOCKED_FROM = 29;
 
 // 3D ビューの背景画像（全カード共通）
 const CARD_3D_BG = 'images/3d_background/light.jpg';
 
 // ファイル名は mac 由来の NFD(分解)形 Unicode で保存されているため、
 // 参照パスを NFD に正規化してファイル名と一致させる（濁点「ブ」=「フ+゛」等）
-players.forEach(p => {
+ALL_PLAYERS.forEach(p => {
   p.frontImg = p.frontImg.normalize('NFD');
-  p.backImg  = p.backImg.normalize('NFD');
-  p.modelSrc = p.modelSrc.normalize('NFD');
+  if (p.frontHiImg) p.frontHiImg = p.frontHiImg.normalize('NFD');
+  if (p.backImg)    p.backImg    = p.backImg.normalize('NFD');
+  if (p.modelSrc)   p.modelSrc   = p.modelSrc.normalize('NFD');
 });
+
+// 「今、一覧に並んでいる」カード。演出が終わると revealLockedCards() が残りを push する。
+const players = ALL_PLAYERS.slice(0, LOCKED_FROM);
 
 const GRADIENTS = [
   ["#1b3060","#0a1020"],["#1e2455","#0c1030"],["#0f2840","#061520"],
@@ -560,7 +758,7 @@ const GRADIENTS = [
 ];
 
 let current = 3;
-const SPECIAL_IDX = players.length; // = 7  ゴーストスロットのインデックス
+const SPECIAL_IDX = LOCKED_FROM;    // ゴーストスロットのインデックス（演出後は No.30 の位置）
 let revealing  = false;             // reveal アニメーション実行中フラグ
 let revealDone = false;             // reveal 完了フラグ
 const flipped = new Set();
@@ -612,20 +810,32 @@ const silSVG = (idx) => idx % 2 === 0
   ? `<svg viewBox="0 0 80 110" fill="none" xmlns="http://www.w3.org/2000/svg" class="card-silhouette"><ellipse cx="40" cy="17" rx="9" ry="9" fill="rgba(255,255,255,0.17)"/><path d="M29 33 Q40 27 51 33 L55 68 L43 66 L40 88 L37 66 L25 68 Z" fill="rgba(255,255,255,0.14)"/><path d="M29 33 L17 58 L25 61 L31 44" fill="rgba(255,255,255,0.11)"/><path d="M51 33 L63 58 L55 61 L49 44" fill="rgba(255,255,255,0.11)"/><path d="M37 88 L34 110 L39 110 L40 94" fill="rgba(255,255,255,0.12)"/><path d="M43 88 L46 110 L41 110 L40 94" fill="rgba(255,255,255,0.12)"/></svg>`
   : `<svg viewBox="0 0 80 110" fill="none" xmlns="http://www.w3.org/2000/svg" class="card-silhouette"><ellipse cx="40" cy="17" rx="9" ry="9" fill="rgba(255,255,255,0.17)"/><path d="M31 31 Q40 25 49 31 L53 64 L41 62 L40 86 L39 62 L27 64 Z" fill="rgba(255,255,255,0.14)"/><path d="M31 31 L14 54 L22 57 L30 41" fill="rgba(255,255,255,0.11)"/><path d="M49 31 L66 54 L58 57 L50 41" fill="rgba(255,255,255,0.11)"/><path d="M39 86 L36 110 L40 110" fill="rgba(255,255,255,0.12)"/><path d="M41 86 L44 110 L40 110" fill="rgba(255,255,255,0.12)"/></svg>`;
 
+// 中央カードで使う高画質版のパス。buildCard と prefetchPaths の両方が参照するので、
+// 導出をここ1箇所にまとめる（片方だけ直してズレるのを防ぐ）。
+// frontImg は NFD 正規化済みで、置換するのは ASCII 部分だけなので正規化は保たれる。
+function frontHiSrc(p) {
+  return p.frontHiImg || p.frontImg.replace('card_front/', 'card_front_hi/');
+}
+
 function buildCard(p, idx) {
   const slot = document.createElement("div");
   slot.className = "card-slot";
   const [c1, c2] = GRADIENTS[idx % GRADIENTS.length];
 
+  // 裏画像を持たないカード（告知など）は裏面ごと作らない = めくれない
+  const canFlip = !!p.backImg;
+  const hiSrc = frontHiSrc(p);
+
+  // modelSrc を持たないカード（3Dデータが無い）はボタンごと作らない
   slot.innerHTML = `
-    <button class="btn-3d" data-idx="${idx}">3D で見る ›</button>
+    ${p.modelSrc ? `<button class="btn-3d" data-idx="${idx}">3D で見る ›</button>` : ``}
     <div class="card-inner" id="ci-${idx}">
       <div class="card-face">
-        <img data-src="${p.frontImg}" data-hi-src="${p.frontImg.replace('card_front/','card_front_hi/')}" class="card-front-img" alt="${p.name}" draggable="false" decoding="async">
+        <img data-src="${p.frontImg}" data-hi-src="${hiSrc}" class="card-front-img" alt="${p.name}" draggable="false" decoding="async">
       </div>
-      <div class="card-face card-back" style="padding:0">
+      ${canFlip ? `<div class="card-face card-back" style="padding:0">
         <img data-back-src="${p.backImg}" data-back-lo-src="${p.backImg.replace('card_back/','card_back_lo/')}" class="card-front-img" alt="${p.name}" draggable="false" decoding="async">
-      </div>
+      </div>` : ``}
     </div>`;
 
   slot.querySelector(".card-inner").addEventListener("click", () => {
@@ -633,11 +843,11 @@ function buildCard(p, idx) {
     if (didDrag || didTouchDrag || touchHandled) return;
     if (!slot.classList.contains("center")) {
       navigateTo(idx);
-    } else {
+    } else if (canFlip) {
       doFlip(idx);
     }
   });
-  slot.querySelector(".btn-3d").addEventListener("click", e => {
+  slot.querySelector(".btn-3d")?.addEventListener("click", e => {
     e.stopPropagation();
     openModal3d(idx);
   });
@@ -645,9 +855,8 @@ function buildCard(p, idx) {
 }
 
 function buildDots() {
-  const needed = (current === SPECIAL_IDX && !revealDone)
-    ? 0
-    : (revealDone ? players.length + 1 : players.length);
+  // players は演出後に37枚へ伸びるので、そのまま枚数として使える。
+  const needed = (current === SPECIAL_IDX && !revealDone) ? 0 : players.length;
 
   // 動作中で個数が変わらなければ、再生成せず active クラスだけ移す（DOM churn 回避）
   if (motionActive && navDotsTrack.children.length === needed && needed > 0) {
@@ -703,10 +912,38 @@ function isUIElement(el) {
 }
 let liveOffset = 0, rafId = null;
 
+// フリップの所要時間。裏画像の解放タイマーもこれを基準に決める。
+const FLIP_MS = 1000;
+// 回転中のカード（スロット index）。回転が終わるまで次のタップを受け付けない。
+const flipping = new Set();
+
+// 回転の終了処理。transitionend を待つのは、固定タイマーで切ると transition の
+// 開始が次のスタイル反映まで遅れる分だけ末尾が削られ、減速の余韻がスナップで
+// 消えるため。transitionend が来ない場合（タブ非表示など）に備えて保険の
+// タイマーも張り、どちらか早いほうで1回だけ後始末する。
+function endFlip(ci, idx) {
+  let timer = 0;
+  const finish = () => {
+    ci.removeEventListener('transitionend', onEnd);
+    clearTimeout(timer);
+    ci.style.transition = "";
+    flipping.delete(idx);
+  };
+  const onEnd = e => { if (e.target === ci && e.propertyName === 'transform') finish(); };
+  ci.addEventListener('transitionend', onEnd);
+  timer = setTimeout(finish, FLIP_MS + 120);
+}
+
 function doFlip(idx) {
   const ci = document.getElementById(`ci-${idx}`);
   if (!ci) return;
   const backImg = ci.querySelector('.card-back img[data-back-src]');
+  // 裏面を持たないカード（告知など）は回さない。呼び出し口が click と touchend の
+  // 2つあるため、入口ごとに弾くのではなくここで一括して止める。
+  if (!backImg) return;
+  // 回転中の再タップは無視する（キューにも積まない）。受け付けると回転が
+  // 積み上がって止まらなくなるうえ、前回の後始末が新しい回転を途中で切る。
+  if (flipping.has(idx)) return;
   const d = cardDeg[idx] || 0;
   const toBack = !flipped.has(idx);
   const base = Math.floor(d / 360) * 360;
@@ -716,21 +953,25 @@ function doFlip(idx) {
     if (backImg && backImg.getAttribute('src') !== backImg.dataset.backSrc) {
       backImg.src = backImg.dataset.backSrc;
     }
-    // 次の ≡180(mod360) の位置 + 2スピン
-    target = (base + 180 > d ? base + 180 : base + 540) + 720;
+    // 次の ≡180(mod360) の位置（半回転のみ）
+    target = (base + 180 > d ? base + 180 : base + 540);
     flipped.add(idx);
   } else {
-    // 次の ≡0(mod360) の位置 + 2スピン
-    target = base + 360 + 720;
+    // 次の ≡0(mod360) の位置（半回転のみ）
+    target = base + 360;
     flipped.delete(idx);
     // 表に戻したらメモリ節約のため裏画像を解放（アニメ完了後）。
     // ただし中央カードはフルを保持し続ける（再フリップを即・黒なしにするため）。
-    if (backImg) setTimeout(() => { if (!flipped.has(idx) && idx !== current) backImg.removeAttribute('src'); }, 900);
+    if (backImg) setTimeout(() => { if (!flipped.has(idx) && idx !== current) backImg.removeAttribute('src'); }, FLIP_MS + 50);
   }
   cardDeg[idx] = target;
-  ci.style.transition = "transform 0.85s cubic-bezier(0.16, 1, 0.3, 1)";
+  // 重みのある反転：半回転を 1 秒。easeInOutCubic 級に両端を緩めると最初と最後の
+  // 250ms で 6% しか動かず、動いて見える時間が実質 0.5 秒になって体感が短くなる。
+  // ここは中盤への集中を弱め、1秒を通して動き続けるイージングにしている。
+  flipping.add(idx);
+  ci.style.transition = `transform ${FLIP_MS}ms cubic-bezier(0.45, 0.05, 0.35, 1)`;
   ci.style.transform = `rotateY(${target}deg)`;
-  setTimeout(() => { ci.style.transition = ""; }, 850);
+  endFlip(ci, idx);
 }
 
 function getBaseOffset(idx) {
@@ -739,11 +980,17 @@ function getBaseOffset(idx) {
   return W / 2 - idx * (cardW + 16) - cardW / 2;
 }
 
+// 一覧の右端インデックス。演出前は末尾のゴーストスロット、演出後は &You。
+// 演出でスロット数が増えるので、DOM の実数から取る。
+function maxIndex() {
+  return carousel.children.length - 1;
+}
+
 function nearestCard(offset) {
   const W = carousel.parentElement.offsetWidth;
   const cardW = cardInnerWidth();
   const cw = cardW + 16;
-  return Math.max(0, Math.min(players.length, Math.round((W / 2 - cardW / 2 - offset) / cw)));
+  return Math.max(0, Math.min(maxIndex(), Math.round((W / 2 - cardW / 2 - offset) / cw)));
 }
 
 function cancelInertia() {
@@ -769,7 +1016,7 @@ function startInertia(velPxPerMs) {
   carousel.style.transition = "none";
   let vel = velPxPerMs * 16; // px/ms → px/frame (60fps)
   let offset = liveOffset;
-  const minOff = getBaseOffset(players.length);
+  const minOff = getBaseOffset(maxIndex());
   const maxOff = getBaseOffset(0);
 
   function frame() {
@@ -797,21 +1044,92 @@ function startInertia(velPxPerMs) {
 // 表画像は全カードを軽量解像度(480px)で常駐デコードする（仮想化なし）。
 // → スクラブ中のデコードが起きず、どこでも即表示になる。
 // 裏画像は重い(769px)ため、フリップ時のみ読み込む（doFlip 参照）。
-function loadAllFronts() {
+// onComplete: 全枚数の読み込みが済んだ時点で1回だけ呼ばれる（ローディングの完了判定用）。
+function loadAllFronts(onComplete) {
   const imgs = carousel.querySelectorAll('img[data-src]'); // 表画像のみ
   let i = 0;
+  const pending = [];
   function step() {
     const t0 = performance.now();
     while (i < imgs.length && performance.now() - t0 < 6) { // 1フレーム最大6msだけ読む
       const img = imgs[i++];
-      if (img.getAttribute('src') !== img.dataset.src) {
-        img.src = img.dataset.src;
-        if (img.decode) img.decode().catch(() => {}); // RAMへ先行デコード（visibility切替時に即描画）
-      }
+      if (img.getAttribute('src') !== img.dataset.src) img.src = img.dataset.src;
+      // init() → applyCenterHiRes() が先に全カードの src を入れているため、
+      // 「ここで src を入れた画像だけ待つ」形にすると実質1枚しか待てない。
+      // 完了判定は load/error で行う — decode() は display:none 配下の
+      // ゴーストカードで即 reject し、ネットワークを待たずに完了扱いになるため。
+      pending.push(new Promise(r => {
+        if (img.complete) { r(); return; }
+        img.addEventListener('load', r, { once: true });
+        img.addEventListener('error', r, { once: true });
+      }));
+      if (img.decode) img.decode().catch(() => {}); // RAMへ先行デコード（visibility切替時に即描画）
     }
     if (i < imgs.length) requestAnimationFrame(step);
+    else if (onComplete) Promise.all(pending).then(() => onComplete());
   }
   requestAnimationFrame(step);
+}
+
+// ─── 裏画像＋伏せカードの表画像の先読み（HTTPキャッシュに入れるだけ）───────────────
+// img.src には載せない。載せるとデコード済みビットマップが常駐し、
+// 裏フル(769px)37枚だけで 769*1077*4*37 ≒ 122MB になってモバイルが落ちる。
+// ここで潰すのはネットワーク待ちだけ。デコードは従来どおりフリップ時に行い、
+// アニメ(1000ms)の間に間に合う。メモリ管理は updateCenterBack() のまま変更しない。
+const PREFETCH_CONCURRENCY = 6;     // 一斉に投げるとブラウザの同時接続上限で表画像まで遅延する
+const PREFETCH_TIMEOUT_MS  = 60000; // 極端に遅い回線で永久に明けないのを防ぐ
+
+function prefetchPaths() {
+  const paths = [];
+  const addBack = full => {
+    paths.push(full);
+    paths.push(full.replace('card_back/', 'card_back_lo/'));
+  };
+  ALL_PLAYERS.forEach(p => { if (p.backImg) addBack(p.backImg); }); // 読み込み時に NFD 正規化済み
+  // 伏せられた10枚は init 時点で DOM に無く、loadAllFronts の対象外になる。
+  // 表画像もここでキャッシュに入れておき、演出明けに白抜けしないようにする。
+  ALL_PLAYERS.slice(LOCKED_FROM).forEach(p => paths.push(p.frontImg));
+  // 演出明けに中央へ残るのは No.30（= ALL_PLAYERS[LOCKED_FROM]）の1枚だけ。
+  // 中央カードだけは applyCenterHiRes() が高画質版に差し替えるため、この1枚に限り
+  // 高画質版もキャッシュに入れておき、差し替えでネットワーク待ちが出ないようにする。
+  // 残りの伏せカードは端に並ぶだけで高画質版を使わないので、ここでは足さない。
+  const special = ALL_PLAYERS[LOCKED_FROM];
+  if (special) paths.push(frontHiSrc(special));
+  return paths;
+}
+
+function prefetchCardImages() {
+  const queue = prefetchPaths();
+  const total = queue.length;
+  let done = 0;
+
+  return new Promise(resolve => {
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve(done);
+    };
+    const timer = setTimeout(finish, PREFETCH_TIMEOUT_MS);
+    if (total === 0) { finish(); return; }
+
+    function pump() {
+      const url = queue.shift();
+      if (url === undefined) return;
+      fetch(url, { cache: 'force-cache' })
+        // 本文を読み切る。読み手がいないとブラウザが転送を打ち切り、
+        // キャッシュに入り切らないことがある（＝先読みが無意味になる）。
+        // arrayBuffer は圧縮されたままの生バイト(約69KB)で、画像のデコードは起きない。
+        .then(r => r.arrayBuffer())
+        .catch(() => {}) // 個別の失敗は無視。その1枚だけ従来どおりフリップ時に取得されるだけ
+        .then(() => {
+          if (++done >= total) finish();
+          else pump();
+        });
+    }
+    for (let i = 0; i < PREFETCH_CONCURRENCY; i++) pump();
+  });
 }
 
 // 表画像は常駐するので、移動時の画像管理は不要（呼び出し箇所互換のための空関数）
@@ -900,9 +1218,6 @@ function render() {
     const p = players[current];
     infoName.textContent = p.name;
     infoDesc.textContent = p.desc;
-  } else if (revealDone) {
-    infoName.textContent = "&You";
-    infoDesc.textContent = "Sample text";
   } else {
     infoName.textContent = "";
     infoDesc.textContent = "";
@@ -1026,6 +1341,62 @@ navDots.addEventListener('pointercancel', endScrub);
 window.addEventListener('resize', applyDotsWindow);
 applyDotsWindow();
 
+// 演出明けに、伏せていた10枚（No.30〜36・&You・告知2枚）を一覧へ加える。
+// ゴーストスロットはそのまま No.30 のカードに置き換わるので、
+// current（= SPECIAL_IDX）は動かさずに No.30 が中央へ残る。
+function revealLockedCards() {
+  const locked = ALL_PLAYERS.slice(LOCKED_FROM);
+  players.push(...locked);
+
+  const ghost = document.getElementById("ghost-slot");
+  const first = buildCard(locked[0], LOCKED_FROM);
+
+  // No.30 は演出直後に中央へ残る唯一のカード。buildCard は src を空で作るので、
+  // このあと render() → applyCenterHiRes() が高画質版を入れるまで絵が無い状態になり、
+  // カルーセルのフェードイン(0.8s)と重なって「一度消えて読み直す」ように見えていた。
+  // 先読み済みの軽量版を先に入れておけば即座に描画され、以降の高画質への差し替えでは
+  // img が既存の絵を保持したまま切り替わる（HTML仕様: pending request が揃うまで
+  // current request を描き続ける）ため、白抜けが起きない。
+  const firstImg = first.querySelector('img[data-src]');
+  if (firstImg) firstImg.src = firstImg.dataset.src;
+
+  if (ghost) ghost.replaceWith(first); // ゴーストは「and...」の器なので、まるごと置き換える
+  else carousel.appendChild(first);
+
+  for (let i = 1; i < locked.length; i++) {
+    carousel.appendChild(buildCard(locked[i], LOCKED_FROM + i));
+  }
+  showCardButtons(); // 追加したカードの .btn-3d にも現在の表示状態を反映する
+}
+
+// Phase 3 の内訳。合計 2700ms で、分割前の静止 1200ms より 1.5秒 長い。
+// その分 Phase 4（カルーセル復帰）以降が後ろにずれ、演出全体も 1.5秒 延びる。
+const SETTLE_HOLD_MS = 1200;  // 着地したカードを見せる静止
+const SETTLE_MOVE_MS = 1000;  // カルーセル定位置へ寄せる時間
+const SETTLE_BEAT_MS = 500;   // 到着してからクロスフェード開始までの間
+
+// Phase 3b でカードを寄せる距離。オーバーレイは .carousel-wrap 全体に敷かれて
+// いるのでカードはその中央に着地するが、カルーセルのカードは info-panel と
+// nav-dots の分（実測で約68px、480px以下では約66px）だけ上にいる。
+// 値を直書きするとブレークポイントや将来のレイアウト変更で再びずれるため、
+// 毎回 #ghost-slot を測って差分を取る。
+//
+// #ghost-slot は演出中の中央スロットで、高さはカードと同一（--card-h）。
+// Phase 4 の revealLockedCards() で No.30 に置き換わるので、それより前にしか
+// 測れない点に注意。render() が scale() を掛けることがあるが、transform-origin は
+// 既定の中心なので「中心のY」はスケールの影響を受けない。
+// carousel は opacity:0 だが getBoundingClientRect() は opacity に影響されない。
+// .carousel-wrap の scale はローディング完了時に 1 に戻っており（.revealed）、
+// 演出はそれより後にしか起きないため、画面px＝translateYのpxとして扱ってよい。
+function carouselOffsetY(overlayEl) {
+  const ghost = document.getElementById("ghost-slot");
+  if (!ghost) return 0;
+  const g = ghost.getBoundingClientRect();
+  const o = overlayEl.getBoundingClientRect();
+  if (!g.height || !o.height) return 0;
+  return (g.top + g.height / 2) - (o.top + o.height / 2);
+}
+
 function triggerReveal() {
   if (revealing || revealDone) return;
   revealing = true;
@@ -1066,39 +1437,46 @@ function triggerReveal() {
         // ─── Phase 3: 静止（1.2s） ───
 
         setTimeout(() => {
-          // ─── Phase 4: カルーセル復帰（0.8s） ───
-          revealDone = true;
-
-          // ゴーストスロットを特殊カードに切り替え
-          document.getElementById("ghost-hint").style.display   = "none";
-          document.getElementById(`ci-${SPECIAL_IDX}`).style.display = "block";
-
-          // オーバーレイをフェードアウト
-          overlay.style.transition = "opacity 0.6s ease";
-          overlay.style.opacity    = "0";
-
-          // カルーセルをぼんやり復帰
-          carousel.style.visibility = "visible";
-          [carousel, infoPanelEl, navDots, flipHintEl].forEach(el => {
-            if (!el) return;
-            el.style.transition = "opacity 0.8s ease";
-            el.style.opacity    = "1";
-          });
-
-          render(); // 8つ目のdot・info-panel を更新
+          // ─── Phase 3b: カルーセルの定位置へ寄せる（1.0s） ───
+          // ここで詰めておかないと、Phase 4 のクロスフェードで
+          // 約68px ぶんカードが飛んで見える。
+          fall.style.transition = `transform ${SETTLE_MOVE_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`;
+          fall.style.transform  = `translateY(${carouselOffsetY(overlay)}px)`;
 
           setTimeout(() => {
-            overlay.style.display  = "none";
-            overlay.style.opacity  = "1"; // 次回用にリセット
-            fall.style.transition  = "none";
-            fall.style.transform   = `translateY(${startY}px)`;
-            drop.style.animation   = "none";
-            drop.style.transform   = "rotateY(0deg)";
-            revealing = false;
-          }, 800);
+            // ─── Phase 4: カルーセル復帰（0.8s） ───
+            revealDone = true;
 
-        }, 1200); // Phase 3
-      }, 8000);   // Phase 2b
+            // ゴーストスロットを No.30 に置き換え、31〜36 と &You を右に足す
+            revealLockedCards();
+
+            // オーバーレイをフェードアウト
+            overlay.style.transition = "opacity 0.6s ease";
+            overlay.style.opacity    = "0";
+
+            // カルーセルをぼんやり復帰
+            carousel.style.visibility = "visible";
+            [carousel, infoPanelEl, navDots, flipHintEl].forEach(el => {
+              if (!el) return;
+              el.style.transition = "opacity 0.8s ease";
+              el.style.opacity    = "1";
+            });
+
+            render(); // 39個に増えたdot・info-panel・追加カードの画像読み込みを反映
+
+            setTimeout(() => {
+              overlay.style.display  = "none";
+              overlay.style.opacity  = "1"; // 次回用にリセット
+              fall.style.transition  = "none";
+              fall.style.transform   = `translateY(${startY}px)`;
+              drop.style.animation   = "none";
+              drop.style.transform   = "rotateY(0deg)";
+              revealing = false;
+            }, 800);
+
+          }, SETTLE_MOVE_MS + SETTLE_BEAT_MS); // Phase 3b: 移動 → 間
+        }, SETTLE_HOLD_MS);                    // Phase 3: 静止
+      }, 8000);                                // Phase 2b
     }, 1000);     // 暗転待機
   }, 100);        // Phase 1
 }
@@ -1111,29 +1489,22 @@ function init() {
   const ghostSlot = document.createElement("div");
   ghostSlot.className = "ghost-slot";
   ghostSlot.id = "ghost-slot";
+  // 演出前の「and...」の置き場。演出が終わると revealLockedCards() が
+  // このスロットごと No.30 の本物のカードに差し替える。
   ghostSlot.innerHTML = `
   <div class="ghost-hint" id="ghost-hint">
     <span class="hint-label">and...</span>
-    <div class="hint-arrow">▶</div>
-  </div>
-  <div class="card-inner" id="ci-${SPECIAL_IDX}"
-       style="display:none;width:var(--card-w);height:var(--card-h);
-              position:relative;transform-style:preserve-3d;border-radius:11px;cursor:pointer">
-    <div class="card-face">
-      <img data-src="images/card_front/00_%26You1_front.jpg" data-hi-src="images/card_front_hi/00_%26You1_front.jpg" class="card-front-img" alt="&You" draggable="false" decoding="async">
-    </div>
-    <div class="card-face card-back" style="transform:rotateY(180deg);padding:0">
-      <img data-back-src="images/card_back/00_%26You1_back.png" data-back-lo-src="images/card_back_lo/00_%26You1_back.png" class="card-front-img" alt="&You" draggable="false" decoding="async">
+    <div class="hint-arrow">
+      <!-- 以前は文字の ▶(U+25B6) だった。フォントにグリフが無い環境で絵文字フォントへ
+           フォールバックしてカラー絵文字になるため SVG に置き換えた。
+           viewBox は三角形の外接矩形に合わせてあるので、width/height の値が
+           そのまま画面上の三角形のピクセル寸法になる（大きさの調整はこの2つだけ）。 -->
+      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="15" viewBox="8 5 11 14" aria-hidden="true">
+        <path d="M8 5v14l11-7z" fill="currentColor"/>
+      </svg>
     </div>
   </div>`;
   carousel.appendChild(ghostSlot);
-
-  // ゴーストスロット — クリック（PC）
-  ghostSlot.querySelector(".card-inner").addEventListener("click", () => {
-    if (modalInteractionBlock || document.getElementById('modal-3d').classList.contains('open')) return;
-    if (didDrag || touchHandled || !revealDone) return;
-    if (current === SPECIAL_IDX) doFlip(SPECIAL_IDX);
-  });
 
   current = 0;
   render();
@@ -1214,13 +1585,6 @@ function init() {
           else navigateTo(idx);
           return;
         }
-      } else {
-        const ghostEl = e.target.closest(".ghost-slot");
-        if (ghostEl && revealDone && current === SPECIAL_IDX) {
-          carousel.style.transition = "";
-          doFlip(SPECIAL_IDX);
-          return;
-        }
       }
     }
     startInertia((endX - tx) / Math.max(1, dt));
@@ -1229,46 +1593,260 @@ function init() {
   window.addEventListener("resize", adjustTranslate);
 }
 
-init();
-loadAllFronts(); // 表画像を全カード分、軽量解像度で常駐読み込み（progressive）
+// init() はローディング画面のアセット確保後（loadingScreenReady() の解決後）に呼ぶ。
+// 下のローディング制御ブロックを参照。
 
-// BGM
-(function() {
-  const bgm = document.getElementById("bgm");
-  const btn = document.getElementById("bgmBtn");
-  bgm.volume = 0.28;
-  bgm.muted = false;
-  let playing = false;
-  btn.textContent = "♪ ON";
+// ─── 音（ローディング中は心音、入場後は BGM。左下の同じボタンで操作する）───
+// 初期は OFF。autoplay 制限により、無音でなければ自動再生できないため。
+// 反応するのはこのボタン1箇所だけ。画面のどこを触っても音は鳴らない。
+const loadingVideo = document.getElementById('loading-video');
+const soundBtn = document.getElementById('bgmBtn');
+const bgm = document.getElementById('bgm');
+const HEART_VOL = 1.0;
+// 素材(蒼穹_soft.mp3)の時点で -12dB 済みなので、ここでは減衰させない。
+// 1.0 にしてあるのは、iOS が volume を無視することで生じる
+// 「PCでは 0.28、iPhone では 1.0」という食い違いを無くすため。
+// これで PC で聴いた音量がそのまま iPhone の音量になる。
+// 音量を変えたいときは、この値ではなく mp3 を作り直すこと（iOS に効かないため）。
+const BGM_VOL   = 1.0;
+const HEART_FADE_OUT_MS  = 600;  // 入場時に心音を落としきるまで
+const BGM_START_DELAY_MS = 1000; // revealSite() 起点。心音600ms + 完全な静けさ400ms
+let soundOn = false;
+let bgmPrimePromise = null; // 解錠処理。二重に走らせない
+let bgmStarted = false;     // 一度でも聞こえる形で鳴らしたか（Task 4 の頭出し判定で使う）
+let loadingDone = false; // Task 6 の revealSite() が true にする
 
-  function startPlay() {
-    if (playing) return;
-    playing = true;
-    bgm.play().catch(() => { playing = false; });
+// 同じ要素に対して新しいフェードが始まったら、古いフェードは次のフレームで降りる。
+// これが無いと、ボタン連打で複数のループが同時に el.volume を書き合い、
+// 音量がばたついたり、OFF にしたのに下がりきらないまま一瞬鳴ったりする。
+function fadeAudio(el, from, to, ms) {
+  const gen = el._fadeGen = (el._fadeGen || 0) + 1;
+  const t0 = performance.now();
+  el.volume = from;
+  function tick(ts) {
+    if (el._fadeGen !== gen) return; // 自分より新しいフェードが始まっている
+    const k = Math.min(1, (ts - t0) / ms);
+    el.volume = from + (to - from) * k;
+    if (k < 1) requestAnimationFrame(tick);
   }
+  requestAnimationFrame(tick);
+}
 
-  // 最初のユーザー操作から3秒後に再生（autoplay制限の回避）
-  function onFirstInteraction() {
-    document.removeEventListener("touchstart", onFirstInteraction);
-    document.removeEventListener("mousedown", onFirstInteraction);
-    setTimeout(startPlay, 1000);
-  }
-  document.addEventListener("touchstart", onFirstInteraction, { passive: true });
-  document.addEventListener("mousedown", onFirstInteraction);
+// ユーザー操作の中で一度 play() しておくと autoplay ロックが解ける。
+// preload="none" でも play() で読み込みが始まる。
+//
+// 【変更点】以前は再生しっぱなしにしていたため、本編に着く頃には蒼穹が
+// 数秒〜数十秒進んでいた。ここでは解錠だけして即 pause() し、
+// 実際に鳴らすのは startBgm()（Task 4）に任せる。
+// play() 直後の pause() は AbortError を投げる環境があるので握り潰す。
+function primeBgm() {
+  if (bgmPrimePromise) return bgmPrimePromise;
+  bgm.volume = 0;
+  bgmPrimePromise = bgm.play().then(() => bgm.pause()).catch(() => {});
+  return bgmPrimePromise;
+}
 
-  // ボタンクリック：未再生なら開始、再生中はミュート切替
-  btn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    if (!playing || bgm.paused) {
-      startPlay();
-      bgm.muted = false;
-      btn.textContent = "♪ ON";
-    } else {
-      bgm.muted = !bgm.muted;
-      btn.textContent = bgm.muted ? "♪ OFF" : "♪ ON";
+// 蒼穹を鳴らし始める。初めて聞こえる形で鳴らすときだけ曲の頭に巻き戻す。
+// 2回目以降のオン／オフは止まった位置から再開する（途中で消してまた点けたときに
+// 頭へ戻るのは不自然なため）。
+// 解錠(primeBgm)の pause() と play() が競合しないよう、解錠の完了を待ってから鳴らす。
+function startBgm(fadeMs) {
+  Promise.resolve(primeBgm()).then(() => {
+    if (!soundOn) return; // 解錠の完了待ちの間にミュートされていたら鳴らさない
+    if (!bgmStarted) {
+      bgmStarted = true;
+      try { bgm.currentTime = 0; } catch (e) {}
+      bgm.volume = 0;
     }
+    bgm.muted = false;
+    bgm.play().catch(() => {});
+    fadeAudio(bgm, bgm.volume, BGM_VOL, fadeMs);
   });
-})();
+}
+
+// 入場時。心音を完全に落としきり、静けさを挟んでから蒼穹を始める。
+// 以前は両者を同時に走らせるクロスフェードで、約600ms 重なっていた。
+function handoffToBgm() {
+  fadeAudio(loadingVideo, loadingVideo.volume, 0, HEART_FADE_OUT_MS);
+  // 静けさの1秒はユーザーがボタンに触れるのに十分な長さがあるため、
+  // その間に明示的にミュートされていたら、待機中のタイマーで上書きしない。
+  setTimeout(() => { if (soundOn) startBgm(1200); }, BGM_START_DELAY_MS);
+}
+
+// ボタンには「現在の状態」を出す（押した後どうなるか、ではない）。
+// aria-label だけは動作を書く。Task 5 でアイコン版に差し替える。
+function updateSoundBtn() {
+  soundBtn.classList.toggle('is-muted', !soundOn); // 表示するのは現在の状態
+  soundBtn.setAttribute('aria-label', soundOn ? '音を消す' : '音を出す');
+}
+
+function setSound(on) {
+  soundOn = on;
+  updateSoundBtn();
+
+  // 受け渡し中（心音のフェードアウトが終わる前）に触られても心音を残さない。
+  // volume ではなく muted なのは即座に効くため（iOS では volume が無視される）。
+  if (loadingDone) loadingVideo.muted = true;
+
+  if (on) {
+    if (loadingDone) {
+      startBgm(800); // 初回なら頭出しされる（bgmStarted の判定は startBgm 内）
+    } else {
+      loadingVideo.muted = false;
+      fadeAudio(loadingVideo, 0, HEART_VOL, 800); // いきなり最大音量にしない
+    }
+  } else {
+    if (loadingDone) {
+      fadeAudio(bgm, bgm.volume, 0, 300);
+      // iOS は volume を無視するため、フェードだけでは止まらない。
+      // 心音側と同じく muted で確実に黙らせる（フェード完了後に掛ける）。
+      setTimeout(() => { if (!soundOn) bgm.muted = true; }, 320);
+    } else {
+      fadeAudio(loadingVideo, loadingVideo.volume, 0, 300);
+      setTimeout(() => { if (!soundOn) loadingVideo.muted = true; }, 320);
+    }
+  }
+}
+
+updateSoundBtn(); // 初期は OFF。扉の OK（enterFromGate）で ON になる
+soundBtn.classList.add('over-loading'); // ローディング中はオーバーレイより前面
+soundBtn.addEventListener('click', e => {
+  e.stopPropagation();
+  setSound(!soundOn);
+});
+
+// ─── 扉の OK から呼ばれる。すべてユーザー操作の文脈の中で同期的に実行する ───
+// ここに await や setTimeout を挟むと、iOS で解錠に失敗する。
+function enterFromGate() {
+  soundOn = true;
+  updateSoundBtn();
+
+  // 蒼穹は「解錠だけ」して止めておく。鳴らすのは本編に着いてから。
+  primeBgm();
+
+  // 心音を先頭の拍から鳴らし直す。currentTime=0 により、最初のピークが
+  // 1.5秒後に来ることが保証される（msToNextBeatPeak の前提と一致する）。
+  try { loadingVideo.currentTime = 0; } catch (e) {}
+  loadingVideo.muted = false;
+  loadingVideo.volume = 0;
+  // 低電力モード等で autoplay が失敗していても、ユーザー操作起点のここで通る。
+  // iOS が自動再生を拒否したときに描く再生ボタン（WebKit Bug 219889）も、
+  // この経路なら現れない。
+  loadingVideo.play().catch(() => {});
+  fadeAudio(loadingVideo, 0, HEART_VOL, 800); // いきなり最大音量にしない
+}
+
+// ─── ローディング制御 ───────────────────────────────────
+// 最低表示時間・表画像のデコード・裏画像の先読み がすべて済んだ後、
+// 次に来る心音の拍の頂点で本編へ移る。入場のタップは無い。
+const LOADING_MIN_MS   = 3000;  // 最低表示時間（目安。実効の最短は次のピークまで待つため約5.0秒）
+const LOADING_MAX_MS   = 60000; // 上限。どれか1つでも固まったら諦めて本編へ進む
+// BEAT_PERIOD / BEAT_PEAK_OFFSET は movies/heartbeat_loop.mp4 の実測値。
+// 生成コマンド: ffmpeg -ss 10.5 -t 17.5 -i movies/心音.mp4 -vf scale=800:-2 ...
+// 動画を作り直すと拍がずれるので、切り出し位置を変えたらここも測り直すこと。
+const BEAT_PERIOD      = 3.5;   // 心音の周期(秒)
+const BEAT_PEAK_OFFSET = 1.5;   // ループ先頭から最初のピークまで(秒)
+
+const loadingOverlay = document.getElementById('loading-overlay');
+const siteFrame      = document.querySelector('.site-frame');
+const carouselWrap   = document.querySelector('.carousel-wrap');
+// autoplay 属性が効かない環境（iOS の低電力モード等）への再試行。
+// 失敗しても静止画（#loading-still）が出るため、画面が真っ黒にはならない。
+loadingVideo.play().catch(() => {});
+
+// 実際に再生が始まってから動画を出す（それまでは静止画）。
+// iOS は自動再生がブロックされると再生ボタンを描き、CSS では隠せない
+// （WebKit Bug 219889, RESOLVED WONTFIX）ため、始まるまで動画を出さない設計にしている。
+loadingVideo.addEventListener('playing', () => {
+  document.getElementById('loading-media').classList.add('playing');
+}, { once: true });
+
+// 拍のピークは currentTime が 1.5 + 3.5k 秒の地点。次のピークまでの ms を返す。
+function msToNextBeatPeak() {
+  const t = loadingVideo.currentTime || 0;
+  const phase = (((t - BEAT_PEAK_OFFSET) % BEAT_PERIOD) + BEAT_PERIOD) % BEAT_PERIOD;
+  return (phase === 0 ? 0 : BEAT_PERIOD - phase) * 1000;
+}
+
+function revealSite() {
+  if (loadingDone) return;
+  loadingDone = true;
+
+  siteFrame.classList.add('revealed');
+  carouselWrap.classList.add('revealed');
+  loadingOverlay.classList.add('done');
+  soundBtn.classList.remove('over-loading');
+  if (soundOn) handoffToBgm();
+
+  setTimeout(() => {
+    loadingVideo.pause();
+    loadingOverlay.remove();
+    carouselWrap.style.transform = 'none'; // 以降 getBoundingClientRect に影響させない
+    console.log('[loading] revealed at', Math.round(performance.now() - window.__loadingStartedAt), 'ms');
+  }, 700); // CSS の 0.6s トランジションより少し長く
+}
+
+// ローディング画面が映ってから重い読み込みを始める。同時に走らせると
+// 111件の画像リクエストが動画を後回しにし、遅い回線で
+// 「ローディング画面が30秒出てこない」状態になる（実測: 動画38.39s / 静止画32.42s）。
+const LOADING_ASSET_WAIT_MS = 2000; // 動画が来ないときの見切り
+
+function loadingScreenReady() {
+  return new Promise(r => {
+    if (loadingVideo.readyState >= 2) { r(); return; } // HAVE_CURRENT_DATA
+    loadingVideo.addEventListener('loadeddata', r, { once: true });
+    loadingVideo.addEventListener('error', r, { once: true });
+    setTimeout(r, LOADING_ASSET_WAIT_MS); // 動画が来なくても先へ進む
+  });
+}
+
+// ─── 扉（入口）─────────────────────────────────────────
+// OK のタップが、このサイトで唯一の「音の解錠」ジェスチャーになる。
+// 扉を出している間も心音動画の先読み（loadingScreenReady）は走らせておく。
+// 滞在時間がそのままバッファリングに使われ、OK 後の待ちが短くなる。
+const soundGate   = document.getElementById('sound-gate');
+const soundGateOk = document.getElementById('sound-gate-ok');
+
+const gateOpened = new Promise(resolve => {
+  soundGateOk.addEventListener('click', () => {
+    // 【重要】必ずハンドラの先頭で、同期的に呼ぶこと。
+    // await や setTimeout を挟んだ後に play() を呼ぶと、
+    // iOS でユーザー操作の文脈が切れて解錠に失敗する。
+    try { enterFromGate(); } catch (e) {} // 扉から先へ進む経路は何があっても止めない
+
+    window.__gateOpenedAt = performance.now(); // 検証用
+    document.documentElement.classList.remove('gate-open');
+    soundGate.classList.add('done');
+    setTimeout(() => soundGate.remove(), 450); // CSS の 0.4s より少し長く
+    armLoadingFailsafe();
+    resolve();
+  }, { once: true });
+});
+soundGateOk.focus();
+
+// 心音動画の先読みはページ読込時から走らせる。扉の滞在で先に終わっていれば、
+// OK 直後にローディングの本処理へ入れる。
+const loadingAssetsReady = loadingScreenReady();
+
+// ネットワークが停滞して画像リクエストが成功も失敗もしないまま止まると、
+// loadAllFronts の完了が永久に来ない。スキップ手段を持たない設計なので、
+// 全体に上限を掛けておかないとギャラリーへ到達する手段が完全に失われる。
+// LOADING_MAX_MS の計測も、この Promise.all が解けた後＝OK 以降に始まる。
+Promise.all([gateOpened, loadingAssetsReady]).then(() => {
+  window.__loadingStartedAt = performance.now();
+  init();
+  showCardButtons(); // カード生成後でないと .btn-3d が存在しない（元は末尾で呼ばれていた）
+  Promise.race([
+    Promise.all([
+      new Promise(r => setTimeout(r, LOADING_MIN_MS)),
+      new Promise(r => loadAllFronts(r)), // 表画像を全カード分、軽量解像度で読み込む（完了まで待つ）
+      prefetchCardImages(),
+    ]),
+    new Promise(r => setTimeout(r, LOADING_MAX_MS)),
+  ]).catch(() => {}).then(() => {
+    setTimeout(revealSite, msToNextBeatPeak());
+  });
+});
 
 // ─── Three.js Lazy Loader ────────────────────────────────────
 async function loadThree() {
@@ -1284,7 +1862,9 @@ let modal_camDist = 0, modal_hasMoved = false, modal_resetTimer = null;
 
 async function openModal3d(idx) {
   closeModal3d();
-  const p = (idx >= 0 && idx < players.length) ? players[idx] : { name: '&You', modelSrc: '3d/00_%26You1.glb' };
+  // 伏せカードと 3Dデータが無いカードは .btn-3d ごと存在しないので、通常ここは通らない
+  const p = players[idx];
+  if (!p || !p.modelSrc) return;
   document.getElementById('modal3dName').textContent = p.name;
 
   // 3D ビューの背景画像（全カード共通）
@@ -1479,6 +2059,4 @@ document.getElementById('modal3dClose').addEventListener('click', closeModal3d);
 document.getElementById('modal-3d').addEventListener('click', e => {
   if (e.target === document.getElementById('modal-3d')) closeModal3d();
 });
-
-showCardButtons();
 </script>
